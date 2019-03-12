@@ -1,0 +1,9 @@
+name: futurefire
+dependencies:
+- click
+- numpy
+- gdal
+- fiona
+- rasterio
+- pip:
+  - pgdata

@@ -1,5 +1,3 @@
-from futurefire.main import load
-
 import logging
 
 

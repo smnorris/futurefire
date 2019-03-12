@@ -18,9 +18,23 @@ def cli():
 
 
 @cli.command()
-def create_db():
+def createdb():
     """Create a fresh database / load extensions / create functions
     """
     pgdata.create_db(config["db_url"])
     db = pgdata.connect(config["db_url"])
     db.execute("CREATE EXTENSION postgis")
+
+
+@cli.command()
+def load():
+    """Load input data to postgres
+    """
+    db = pgdata.connect(config["db_url"])
+
+    for layer in ["inventory", "roads"]:
+        db.ogr2pg(
+            config["input_gdb"],
+            in_layer=config[layer],
+            out_layer=layer
+        )

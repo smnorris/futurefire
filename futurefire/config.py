@@ -2,7 +2,7 @@
 # To overwrite these values, provide futurefire command with a config file
 
 config = {
-    "database": "postgresql://postgres:postgres@localhost:5432/futurefire",
+    "db_url": "postgresql://postgres:postgres@localhost:5432/futurefire",
     "roads": "roads",
     "high_scenario": "data/HighScenario.csv",
     "low_scenario": "data/LowScenario.csv",
