@@ -5,6 +5,8 @@ import logging.handlers
 
 from futurefire.config import config
 
+log = logging.getLogger(__name__)
+
 
 def make_sure_path_exists(path):
     """Make directories in path if they do not exist.
@@ -20,6 +22,7 @@ def make_sure_path_exists(path):
 def load_config(config_file):
     """Read provided config file, overwriting default config values
     """
+    log.info("Loading config from file: %s", config_file)
     cfg = configparser.ConfigParser()
     cfg.read(config_file)
     cfg_dict = dict(cfg["CONFIG"])

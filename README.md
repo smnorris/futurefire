@@ -22,3 +22,16 @@ Randomly generate burned areas for future fire scenarios
     conda env create
     conda activate futurefire
     pip install .
+
+
+# Method
+
+- rasterize inventory
+
+for each event:
+  - randomly place start (within forested area)
+  - choose an axis for expansion (from 8 directions)
+  - expand 1.5x up 1x down within forested area to required area
+  - stepwise expansion  n cells, with probability of expansion in each direction determined randomly
+  - assign result to non-forest for x years
+

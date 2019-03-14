@@ -27,14 +27,13 @@ def createdb():
 
 
 @cli.command()
-def load():
+@click.option("-v", "--validate", is_flag=True)
+@click.argument("config_file", type=click.Path(exists=True))
+def load(config_file, validate):
     """Load input data to postgres
     """
+    util.load_config(config_file)
     db = pgdata.connect(config["db_url"])
-
     for layer in ["inventory", "roads"]:
-        db.ogr2pg(
-            config["input_gdb"],
-            in_layer=config[layer],
-            out_layer=layer
-        )
+        log.info("Loading {} to postgres".format(layer))
+        db.ogr2pg(config["inputs_gdb"], in_layer=config[layer], out_layer=layer)

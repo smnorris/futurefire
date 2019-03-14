@@ -3,11 +3,11 @@
 
 config = {
     "db_url": "postgresql://postgres:postgres@localhost:5432/futurefire",
+    "inputs_gdb": "data/inputs.gdb",
     "roads": "roads",
+    "inventory": "inventory",
     "high_scenario": "data/HighScenario.csv",
     "low_scenario": "data/LowScenario.csv",
-    "inputs_gdb": "data/inputs.gdb",
-    "inventory": "inventory",
     "buffer": 100,
     "cell_size": 50,
     "outputs": "outputs",
