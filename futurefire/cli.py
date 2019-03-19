@@ -22,7 +22,7 @@ def cli():
 
 
 @cli.command()
-@click.option("--config_file", "-c", help="Configuration file")
+@click.option("--config_file", "-c", type=click.Path(exists=True), help="Configuration file")
 @click.option("--wksp", "-w", help="Override config workspace")
 def load(config_file, wksp):
     """
@@ -142,9 +142,14 @@ def load(config_file, wksp):
 
 
 @cli.command()
-@click.option("--config_file", "-c", help="Configuration file")
-def burn(config_file, scenario_csv, forest_image, runid, region, year):
-    """Read input csv and apply fires to the landscape
+@click.argument("scenario_csv", type=click.Path(exists=True))
+@click.option("--config_file", "-c", type=click.Path(exists=True), help="Path to configuration file")
+@click.option("--runid", help="Process only burns with this runid")
+@click.option("--region", help="Process only burns in this region")
+@click.option("--year", help="Process only burns for this year")
+@click.option("--forest_image", type=click.Path(exists=True), help="Path to alternative forest image")
+def burn(scenario_csv, config_file, runid, region, year, forest_image):
+    """Read scenario csv and apply fires to the landscape
     """
     # load scenario csv and find unique run/region/year values
     fires_df = pandas.read_csv(scenario_csv)

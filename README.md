@@ -1,19 +1,11 @@
 # futurefire
 
-Randomly generate burned areas for future fire scenarios
-
-# Usage
-
-    futurefire createdb
-    futurefire load
-    futurefire compute
-
-# Requirements
-
-    Installation is easiest when managing the Python environment with Anaconda / conda.
+Generate random burned forest areas for future fire scenarios.
 
 
 # Installation
+
+With conda:
 
     git clone https://github.com/smnorris/futurefire
     cd futurefire
@@ -21,49 +13,84 @@ Randomly generate burned areas for future fire scenarios
     conda activate futurefire
     pip install .
 
+With pip:
+
+    git clone https://github.com/smnorris/futurefire
+    cd futurefire
+    pip install .
+
+If installing via pip on Windows, you will likely have to first download install the pre-compiled gdal and rasterio Python wheels](https://www.lfd.uci.edu/~gohlke/pythonlibs/). Conda handles this for you.
+
+
+# Data prep
+
+The script handles most data prep but to quickly ensure no edge areas were lost, the BC regions layer was manually prepared:
+
+  - edit polygons to extend beyond BC Border / into ocean, delete islands
+  - reproject to EPSG:3005
+  - rasterize, aligning to provided 1ha Hectares BC `isbc.tif`
+  - extract only cells on land in BC (where `isbc.tif=1`)
+  - output is provided as `regions.tif`
+
+# Usage
+
+Load data to raster:
+
+    futurefire load
+
+
+Create all burns for a given `scenario.csv` file using default configuration settings:
+
+    futurefire burn scenario.csv
+
+
+To override the default configuration, use the `--config_file` option to provide `futurefire` with the path to your config file:
+
+    futurefire load --config_file path/to/myconfig.cfg
+    futurefire burn scenario.csv --config_file path/to/myconfig.cfg
+
+[`sample_config.cfg`](sammple_config.cfg) shows the parameters that can be configured.
+
+
+The `burn` command includes additional options for running just a specific region / run / year. There is also an option for using a forest image other the default raster created by `futurefire load` (based on the `inventory` layer specified in the config):
+
+    $ futurefire burn --help
+    Usage: futurefire burn [OPTIONS] SCENARIO_CSV
+
+      Read scenario csv and apply fires to the landscape
+
+    Options:
+      -c, --config_file PATH  Path to configuration file
+      --runid TEXT            Process only burns with this runid
+      --region TEXT           Process only burns in this region
+      --year TEXT             Process only burns for this year
+      --forest_image PATH     Path to alternative forest image
+      --help                  Show this message and exit.
+
 
 # Method
 
-- rasterize inventory
+## load
+- rasterize inventory, creating 1ha grid in area preserving projection with raster extent/alignment matching a Hectares BC sample raster
+- rasterize roads, creating 1ha grid in area preserving projection
+- buffer the roads by distance specifiied in config (default 500m)
 
-for each event:
-  - randomly place start (within forested area)
-  - choose an axis for expansion (from 8 directions)
-  - expand 1.5x up 1x down within forested area to required area
-  - stepwise expansion  n cells, with probability of expansion in each direction determined randomly
-  - assign result to non-forest for x years
+## burn
 
+For each region / run / year, iterate through fires in the scenario csv:
+  - randomly place fire centre within forested area
+  - create a randomly oriented ellipse at fire centre with target area noted in scenario csv
+  - determine how much forest is within the ellipse
+  - expand the ellipse by 1% until forest area within ellipse meets or exceeds the target burn area
+  - choose the ellipse with the burned forest area closest to the target burn area
+  - note the burn in the output burn image
+  - note that the burn has occured in the forest image
+  - set burned areas in the forest image back to forest if the regen interval has taken place
 
-# prep data
+## dump
 
-- BC regions was manually prepared to ensure no edge areas were lost:
-    - edit polygons to extend beyond BC Border / into ocean, delete islands
-    - reproject to EPSG:3005
-    - rasterize using 1ha grid
-    - extract only cells where isbc==1
+Export all burn geotiffs and generate / export salvage tiffs (areas of burn that overlap the buffered roads image) to folder defined in config `output`
 
-- because gdal does not reproject on rasterize, reproject roads and inventory to an area preserving projection (BC Albers). Write to .gpkg to avoid fussing with the File Geodatabase API
-
-    ogr2ogr -progress -f GPKG -t_srs EPSG:3005 inputs_alb.gpkg future_fire_2019_01_24.gdb roads
-
-    ogr2ogr -progress -update -f GPKG -t_srs EPSG:3005 inputs_alb.gpkg future_fire_2019_01_24.gdb inventory
-
-
-- rasterize inventory:
-
-    gdal_rasterize -burn 1 -l inventory -te 159587.5 173787.5 1881187.5 1748187.5 -tr 100 100 -tap -co COMPRESS=DEFLATE inputs_alb.gdb roads.tif
-
-- rasterize roads and apply buffer using 1ha cells:
-
-    gdal_rasterize -burn 1 -l roads -dialect SQLITE -sql "SELECT * FROM roads WHERE RD_SURFACE != 'ferry'" -te 159587.5 173787.5 1881187.5 1748187.5 -tr 100 100 -tap -co COMPRESS=DEFLATE inputs_alb.gdb roads.tif
-
-    gdal_proximity.py -ot byte -co COMPRESS=DEFLATE -distunits GEO -maxdist 500 -fixed-buf-val 1 roads.tif roads_dist.tif
-
-- If we wanted to experiment with buffer distances, one option would be to  rasterize roads @ 10m then generate a high resolution proximity grid with values corresponding to distance to road. A 1ha cell would probably be fine too.
-
-    gdal_rasterize -burn 1 -l roads -te 159587.5 173787.5 1881187.5 1748187.5 -tr 10 10 -tap -co COMPRESS=DEFLATE -co inputs_alb.gdb roads_10m.tif
-
-    gdal_proximity.py -ot Int16 -co COMPRESS=DEFLATE -co BIGTIFF=YES -distunits GEO -maxdist 1000 roads_10m.tif roads_dist_10m.tif
 
 # Development and testing
 
