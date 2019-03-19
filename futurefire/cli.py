@@ -147,7 +147,7 @@ def load(config_file, wksp):
 @click.option("--runid", help="Process only burns with this runid")
 @click.option("--region", help="Process only burns in this region")
 @click.option("--year", help="Process only burns for this year")
-@click.option("--forest_image", type=click.Path(exists=True), help="Path to alternative forest image")
+@click.option("--forest_image", type=click.Path(exists=True), help="Path to alternative forest image", default=os.path.join(config["wksp"], "inventory.tif"))
 def burn(scenario_csv, config_file, runid, region, year, forest_image):
     """Read scenario csv and apply fires to the landscape
     """
@@ -171,9 +171,9 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
         else:
             raise ValueError("year {} not present in {}".format(year, scenario_csv))
 
-    runids = list(fires_df.runid.unique())
-    regions = list(fires_df.region.unique())
-    years = list(fires_df.year.unique())
+    runids = sorted(list(fires_df.runid.unique()))
+    regions = sorted(list(fires_df.region.unique()))
+    years = sorted(list(fires_df.year.unique()))
 
     # load source forested image
     with rasterio.open(forest_image) as src:
@@ -181,7 +181,12 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
 
     # create output csv for logging individual fire stats
     # (how many iterations to create, actual burnt forest area)
-    with open(config["out_csv"], 'w', newline='') as csvfile:
+    # file is in outputs folder, name is scenario_burn.csv
+    scenario = os.path.splitext(os.path.basename(scenario_csv))[0]
+    out_path = os.path.join(config["outputs"], scenario)
+    util.make_sure_path_exists(out_path)
+    burn_csv = os.path.join(out_path, scenario+"_burns.csv")
+    with open(out_csv, 'w', newline='') as csvfile:
         fieldnames = ["burnid", "iteration", "burned_forest_area"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -191,10 +196,10 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
         fires =  fires[fires['region'] == region]
 
         # restrict processing to given region
-        region_forest = forest[region_image == config[region_lookup]]
+        region_forest = forest[region_image == config["region_lookup"][region]]
 
         for runid in runids:
-            fires = fires['runid'] == run
+            fires = fires['runid'] == runid
 
             # initialize forest tracking raster for the run
             forest_current = region_forest.copy()
@@ -202,14 +207,17 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
             for year in years:
                 fires = fires['year'] == year
                 # initialize output burned year raster
-                burned = np.zeros(shape=forest.shape)
-                # create burn ellipses
-                futurefire.apply_fires(fires, forest_image, burn_image, year)
-                # export current year to tiff
-                futurefire.export_fires(burned, run, year, region)
-                # set current forest to 1 where it has been regen years since
-                # pixel burned
+                burn_image = np.zeros(shape=forest.shape)
+
+                # create burns
+                forest_current, burn_image, burn_list = futurefire.apply_fires(fires, forest_current, burn_image, year)
+
+                # write burns to disk
+                futurefire.write_fires(runid, region, year, burned, burns, outpath, outcsv)
+
+                # set forest=1 where it has been regen years since burned
                 forest_current[burned == (year - config["regen"])] = 1
+
 
 if __name__ == '__main__':
     cli()

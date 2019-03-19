@@ -65,16 +65,16 @@ def random_index(forest):
     return idx
 
 
-def apply_fires(firelist, forest_image, burn_image, year, burn_csv, n=None):
-    """Burn a list of fires [(id, area),] into forest_image, burn_image and
-    write to csv
+def apply_fires(firelist, forest_current, burn_image, year, n=None):
+    """For a given year, burn a list of fires [(id, area),] into forest_current,
+    burn_image and write to csv
     """
     # if specified, only process n records
     if n:
         firelist = firelist[:n]
 
     # generate a shuffled index of all cells with forest
-    forest_idx = random_index(forest_image)
+    forest_idx = random_index(forest_current)
 
     # start from the top of the shuffled list
     idx_position = 0
@@ -94,7 +94,7 @@ def apply_fires(firelist, forest_image, burn_image, year, burn_csv, n=None):
         # because we are looping through the fires, applying them individually
         # it is necessary to make sure the fire's ignition location has not
         # already burned *this year*
-        flattened = forest_image.flatten()
+        flattened = forest_current.flatten()
         while flattened[forest_idx[idx_position]] == 0:
             idx_position += 1
             if idx_position > len(forest_idx):
@@ -127,7 +127,7 @@ def apply_fires(firelist, forest_image, burn_image, year, burn_csv, n=None):
             rr, cc = burn_ellipse(ignition_r, ignition_c, ellipse_area, burn_image)
 
             # calc current forest area within the created burn ellipse
-            burned_forest_area = forest_image[rr, cc].sum()
+            burned_forest_area = forest_current[rr, cc].sum()
 
             # record the values (iteration, (elipse), burned_area, diff)
             ellipse_list.append(
@@ -159,10 +159,10 @@ def apply_fires(firelist, forest_image, burn_image, year, burn_csv, n=None):
         burn_image[result["ellipse"][0], result["ellipse"][1]] = year
 
         # set forested areas in burn ellipse back to 0
-        burn_image[forest_image == 0] = 0
+        burn_image[forest_current == 0] = 0
 
         # apply the burn to the forest status image
-        forest_image[result["ellipse"][0], result["ellipse"][1]] = 0
+        forest_current[result["ellipse"][0], result["ellipse"][1]] = 0
 
         # record burn data as dict for dump to tabular format
         # so we can report on individual burns
@@ -176,8 +176,53 @@ def apply_fires(firelist, forest_image, burn_image, year, burn_csv, n=None):
         # increment the index to the random 'ignition points'
         idx_position += 1
 
-    # append burns to out_csv
+    return (forest_current, burn_image, burns)
 
-    with open(burn_csv, 'a', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=burns[0].keys())
+
+def write_fires(runid, region, year, burn_image, burn_list, out_path, out_csv, burn_year=False):
+    """Write burn image, burn list to disk, calculate and write salvage areas
+    """
+    # write all burn_id, iteration, burned_forest_area data to csv
+    with open(out_csv, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=burn_list[0].keys())
         writer.writerows(burns)
+
+    # a burn_image value of 1 (rather than year) should save some disk space
+    if burn_year:
+        dtype = 'int16'
+    else:
+        burn_image[burn_image > 0] = 1
+        dtype = 'uint8'
+
+    # get output crs, transform etc from the input regions tiff
+    with rasterio.open(config["regions"]) as src:
+        shape = src.shape
+        transform = src.transform
+        height = src.height
+        width = src.width
+        crs = src.crs
+
+    # output file names are: <region>_<runid>_<year>_burns.tif
+    filename = "_".join([str(x) for x in region, runid, year])
+    burn_tiff = os.path.join(out_path, "{}_burns.tif".format(filename))
+    salvage_tiff = os.path.join(out_path, "{}_salvage.tif".format(filename))
+
+    # write the burn image
+    with rasterio.open(burn_tiff, 'w', height=height,
+                   width=width, count=1, dtype=dtype,
+                   crs=crs, transform=transform) as dst:
+        dst.write(burn_image, 1)
+
+    # calculate salvage by overlaying burns with road buff
+    roads_tiff = os.path.join(config["wksp"], "roads_buf.tif")
+    with rasterio.open(roads_tiff) as src:
+        roads = src.read(1)
+
+    salvage = burn_tiff[roads == 1]
+
+    # write salvage to disk
+    with rasterio.open(salvage, 'w', height=height,
+                   width=width, count=1, dtype='uint8',
+                   crs=crs, transform=transform) as dst:
+        dst.write(salvage, 1)
+

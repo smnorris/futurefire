@@ -43,3 +43,20 @@ def test_apply_one_fire(tmpdir):
     out_csv = tmpdir.join("burned.csv")
     futurefire.apply_fires(firelist, forest_image, burn_image, year=2021, burn_csv=out_csv)
     # assert that csv / burn / forest all have correct sums
+
+def test_apply_several_fires(tmpdir):
+    firelist = pd.read_csv(os.path.join(os.path.dirname(__file__),"scenario_2.csv"))
+
+    # create a 100x100 image of 75% forest
+    forest_image = np.zeros([100, 100])
+    random_flat = np.random.choice(10000, 7500, replace=False)
+    random_forest_idx = np.unravel_index(random_flat, forest_image.shape)
+    forest_image[random_forest_idx] = 1
+
+    # initialize a burn image of the same shape
+    burn_image = np.zeros(forest_image.shape)
+
+    # apply fire
+    out_csv = tmpdir.join("burned.csv")
+    futurefire.apply_fires(firelist, forest_image, burn_image, year=2021, burn_csv=out_csv)
+    # assert that csv / burn / forest all have correct sums
