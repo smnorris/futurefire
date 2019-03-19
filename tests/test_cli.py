@@ -7,12 +7,9 @@ from futurefire.cli import cli
 def test_cli_load(tmpdir):
     runner = CliRunner()
     cfg = os.path.join(os.path.dirname(__file__), 'test_config.cfg')
-    result = runner.invoke(cli, ['load', '--config_file', cfg])
+    result = runner.invoke(cli, ['load', '--config_file', cfg, '--wksp', str(tmpdir)])
     assert result.exit_code == 0
-    wksp = os.path.join(os.path.dirname(__file__), 'tempdata')
-    assert os.path.exists(wksp)
-    assert os.path.exists(os.path.join(wksp, "roads.tif"))
-    assert os.path.exists(os.path.join(wksp, "inventory.tif"))
-    assert os.path.exists(os.path.join(wksp, "roads_buf.tif"))
-
+    assert os.path.exists(tmpdir.join("roads.tif"))
+    assert os.path.exists(tmpdir.join("roads_buf.tif"))
+    assert os.path.exists(tmpdir.join("inventory.tif"))
 

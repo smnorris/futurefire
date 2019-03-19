@@ -23,7 +23,8 @@ def cli():
 
 @cli.command()
 @click.option("--config_file", "-c", help="Configuration file")
-def load(config_file):
+@click.option("--wksp", "-w", help="Override config workspace")
+def load(config_file, wksp):
     """
     Load roads and inventory to area-preserving rasters, then buffer roads
     """
@@ -34,6 +35,9 @@ def load(config_file):
     # subprocess rather than via a bash/shell script.
     if config_file:
         util.load_config(config_file)
+    # used for testing
+    if wksp:
+        config["wksp"] = wksp
 
     util.make_sure_path_exists(config["wksp"])
 
