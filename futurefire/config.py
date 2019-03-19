@@ -14,6 +14,10 @@ config = {
             2: "Northern Interior",
             3: "Southern Interior"
         },
+    # bounds are  "xmin ymin xmax ymax" in target area preserving projection
+    # (EPSG:3005, BC Albers)
+    "bounds": "159587.5 173787.5 1881187.5 1748187.5",
+    # buffer and cell size are m
     "buffer": 500,
     "cell_size": 100,
     "fire_axis_ratio_min": 20,

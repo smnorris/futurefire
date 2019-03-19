@@ -153,9 +153,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
     """
     # load scenario csv and find unique run/region/year values
     fires_df = pandas.read_csv(scenario_csv)
-    runids = list(fires_df.runid.unique())
-    regions = list(fires_df.region.unique())
-    years = list(fires_df.year.unique())
 
     # filter fire records to work with based on options
     if runid:
@@ -173,6 +170,10 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
             fires = fires_df["year"] == year
         else:
             raise ValueError("year {} not present in {}".format(year, scenario_csv))
+
+    runids = list(fires_df.runid.unique())
+    regions = list(fires_df.region.unique())
+    years = list(fires_df.year.unique())
 
     # load source forested image
     with rasterio.open(forest_image) as src:
