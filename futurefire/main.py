@@ -8,7 +8,6 @@ import logging
 
 import rasterio
 from rasterio import features
-import fiona
 from affine import Affine
 import pandas
 import numpy.ma as ma
@@ -168,7 +167,7 @@ def apply_fires(firelist, forest_image, burn_image, year, n=None):
         burns.append(
             {
                 "burn_id": burn_id,
-                "iteration": result["iteration"]
+                "iteration": result["iteration"],
                 "burned_forest_area": result["burned_forest_area"]
             }
         )

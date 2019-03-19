@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 import futurefire
 from futurefire.config import config
@@ -17,14 +18,10 @@ def test_config():
     assert config["bounds"][0] == "1368548"
 
 
-#def test_rasterize_inventory():
-#    with rasterio.open(os.path.join(config["wksp"], "inventory.tif")) as src:
-#        image = src.read()
-#    futurefire.burn_ellipse(50,50, 100, image)
-
-
-#def test_burn_ellipse():
-#    with rasterio.open(os.path.join(config["wksp"], "inventory.tif")) as src:
-#        image = src.read()
-#    futurefire.burn_ellipse(50,50, 100, image)
+def test_burn_ellipse():
+    array = np.zeros(shape=[10, 10])
+    rr, cc = futurefire.burn_ellipse(5, 5, 10, array)
+    array[rr, cc] = 1
+    # not exactly a precise test, but area should be within 20%
+    assert array.sum() >= 8 and array.sum() <= 13
 

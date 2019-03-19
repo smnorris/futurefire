@@ -1,3 +1,4 @@
+from futurefire.main import burn_ellipse
 import logging
 
 
