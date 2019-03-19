@@ -19,18 +19,18 @@ With pip:
     cd futurefire
     pip install .
 
-If installing via pip on Windows, you will likely have to first download install the pre-compiled gdal and rasterio Python wheels](https://www.lfd.uci.edu/~gohlke/pythonlibs/). Conda handles this for you.
+If installing via pip on Windows, you will likely have to first download install [pre-compiled gdal and rasterio Python wheels](https://www.lfd.uci.edu/~gohlke/pythonlibs/). Conda handles this for you.
 
 
 # Data prep
 
 The script handles most data prep but to quickly ensure no edge areas were lost, the BC regions layer was manually prepared:
 
-  - edit polygons to extend beyond BC Border / into ocean, delete islands
-  - reproject to EPSG:3005
-  - rasterize, aligning to provided 1ha Hectares BC `isbc.tif`
+  - edit polygons to extend beyond BC Border / into ocean (ensuring regions cover all areas)
+  - reproject to `EPSG:3005`
+  - rasterize, aligning to provided 1ha Hectares BC `data\isbc.tif`
   - extract only cells on land in BC (where `isbc.tif=1`)
-  - output is provided as `regions.tif`
+  - output is provided as `data\regions.tif`
 
 # Usage
 
@@ -52,7 +52,7 @@ To override the default configuration, use the `--config_file` option to provide
 [`sample_config.cfg`](sammple_config.cfg) shows the parameters that can be configured.
 
 
-The `burn` command includes additional options for running just a specific region / run / year. There is also an option for using a forest image other the default raster created by `futurefire load` (based on the `inventory` layer specified in the config):
+The `burn` command includes additional options for running just a specific region / run / year. There is also an option for using a forest image other the default raster created by `futurefire load` (default is derived from the `inventory` layer specified in the config):
 
     $ futurefire burn --help
     Usage: futurefire burn [OPTIONS] SCENARIO_CSV
@@ -89,7 +89,7 @@ For each region / run / year, iterate through fires in the scenario csv:
 
 ## dump
 
-Export all burn geotiffs and generate / export salvage tiffs (areas of burn that overlap the buffered roads image) to folder defined in config `output`
+Export all burn geotiffs and generate / export salvage tiffs (areas of burn that overlap the buffered roads image) to the folder defined in config `output`
 
 
 # Development and testing
