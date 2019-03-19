@@ -24,10 +24,11 @@ If installing via pip on Windows, you will likely have to first download install
 
 # Data prep
 
-The script handles most data prep but to quickly ensure no edge areas were lost, the BC regions layer was manually prepared:
+The script handles most data prep but to quickly ensure no edge areas were lost, the BC regions raster was manually prepared:
 
   - edit polygons to extend beyond BC Border / into ocean (ensuring regions cover all areas)
   - reproject to `EPSG:3005`
+  - assign integers to regions : `{1: Coast, 2: Northern Interior, 3: Southern Interior}`
   - rasterize, aligning to provided 1ha Hectares BC `data\isbc.tif`
   - extract only cells on land in BC (where `isbc.tif=1`)
   - output is provided as `data\regions.tif`

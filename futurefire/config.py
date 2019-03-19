@@ -7,8 +7,6 @@ config = {
     "inputs_gdb": "data/inputs.gdb",
     "roads": "roads",
     "inventory": "inventory",
-    "high_scenario": "data/highscenario.csv",
-    "low_scenario": "data/lowscenario.csv",
     "regions": "data/regions.tif",
     "region_lookup":
         {
