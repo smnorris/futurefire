@@ -79,18 +79,17 @@ The `burn` command includes additional options for running just a specific regio
 ## burn
 
 For each region / run / year, iterate through fires in the scenario csv:
-  - randomly place fire centre within forested area
-  - create a randomly oriented ellipse at fire centre with target area noted in scenario csv
+  - randomly place fire centres within forested area
+  - create randomly oriented ellipse at fire centre with target area noted in scenario csv
   - determine how much forest is within the ellipse
   - expand the ellipse by 1% until forest area within ellipse meets or exceeds the target burn area
   - choose the ellipse with the burned forest area closest to the target burn area
   - note the burn in the output burn image
   - note that the burn has occured in the forest image
+
+Once all fires have been placed for the given region / run / year:
   - set burned areas in the forest image back to forest if the regen interval has taken place
-
-## dump
-
-Export all burn geotiffs and generate / export salvage tiffs (areas of burn that overlap the buffered roads image) to the folder defined in config `output`
+  - export burn geotiff and generate / export a salvage geotiff (areas of burn that overlaps the buffered roads image) to the folder defined in config `output`
 
 
 # Development and testing

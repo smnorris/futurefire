@@ -1,4 +1,6 @@
 from futurefire.main import burn_ellipse
+from futurefire.main import apply_fires
+
 import logging
 
 

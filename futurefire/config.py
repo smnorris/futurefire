@@ -22,6 +22,7 @@ config = {
     "cell_size": 100,
     "fire_axis_ratio_min": 20,
     "fire_axis_ratio_max": 80,
+    "fire_ellipse_pct_growth": 1,
     "regen": 10,
     "outputs": "outputs",
     "log_file": "futurefire.log"

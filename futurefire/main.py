@@ -65,7 +65,7 @@ def random_index(forest):
     return idx
 
 
-def apply_fires(firelist, forest_image, burn_image, year, n=None):
+def apply_fires(firelist, forest_image, burn_image, year, burn_csv, n=None):
     """Burn a list of fires [(id, area),] into forest_image, burn_image and
     write to csv
     """
@@ -110,7 +110,7 @@ def apply_fires(firelist, forest_image, burn_image, year, n=None):
         # count the iterations of fire growth
         iteration = 1
         # define fire growth increment area based on % provided
-        increment = (pct_growth * .01) * target_area
+        increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
         # start the ellipse size as the target size
         ellipse_area = target_area
         # empty list for holding iterations as the fire grows
@@ -124,7 +124,7 @@ def apply_fires(firelist, forest_image, burn_image, year, n=None):
         while not target_area_met:
 
             # create burn ellipse with given area at ignition point
-            rr, cc = burn_ellipse(ignition_r, ignition_c, ellipse_area, burned_image)
+            rr, cc = burn_ellipse(ignition_r, ignition_c, ellipse_area, burn_image)
 
             # calc current forest area within the created burn ellipse
             burned_forest_area = forest_image[rr, cc].sum()
@@ -156,8 +156,10 @@ def apply_fires(firelist, forest_image, burn_image, year, n=None):
             result = min(ellipse_list[-2:], key=lambda x: x["difference"])
 
         # apply the burn to the output burned image
-        # todo - forested areas only
         burn_image[result["ellipse"][0], result["ellipse"][1]] = year
+
+        # set forested areas in burn ellipse back to 0
+        burn_image[forest_image == 0] = 0
 
         # apply the burn to the forest status image
         forest_image[result["ellipse"][0], result["ellipse"][1]] = 0
@@ -175,6 +177,7 @@ def apply_fires(firelist, forest_image, burn_image, year, n=None):
         idx_position += 1
 
     # append burns to out_csv
-    with open(config["out_csv"], 'a', newline='') as csvfile:
+
+    with open(burn_csv, 'a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=burns[0].keys())
         writer.writerows(burns)
