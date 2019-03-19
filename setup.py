@@ -15,7 +15,7 @@ with open("futurefire/__init__.py", "r") as f:
             version = version.strip("'")
             break
 
-requires = ["pgdata", "gdal", "fiona", "rasterio", "click", "numpy"]
+requires = ["pandas", "gdal", "scikit-image", "rasterio", "click", "numpy"]
 
 test_requirements = ["pytest"]
 

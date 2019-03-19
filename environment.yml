@@ -3,7 +3,6 @@ dependencies:
 - click
 - numpy
 - gdal
-- fiona
+- pandas
+- scikit-image
 - rasterio
-- pip:
-  - pgdata

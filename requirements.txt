@@ -1,5 +1,5 @@
 pgdata
-fiona
+scikit-image
 rasterio
 click
 gdal

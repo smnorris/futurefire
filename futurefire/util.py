@@ -26,9 +26,12 @@ def load_config(config_file):
     cfg = configparser.ConfigParser()
     cfg.read(config_file)
     cfg_dict = dict(cfg["CONFIG"])
-
     for key in cfg_dict:
         config[key] = cfg_dict[key]
+    # split the bounds string into a list
+    config["bounds"] = [b for b in config["bounds"].split()]
+    # add region lookup dict to main config dict
+    config["region_lookup"]: dict(cfg["REGION_LOOKUP"])
 
 
 def configure_logging():
