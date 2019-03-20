@@ -50,7 +50,7 @@ To override the default configuration, use the `--config_file` option to provide
     futurefire load --config_file path/to/myconfig.cfg
     futurefire burn scenario.csv --config_file path/to/myconfig.cfg
 
-[`sample_config.cfg`](sammple_config.cfg) shows the parameters that can be configured.
+[`sample_config.cfg`](sample_config.cfg) shows the parameters that can be configured.
 
 
 The `burn` command includes additional options for running just a specific region / run / year. There is also an option for using a forest image other the default raster created by `futurefire load` (default is derived from the `inventory` layer specified in the config):
