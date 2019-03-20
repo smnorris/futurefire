@@ -82,6 +82,8 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
     # initialize a list to track output burns for writing to csv
     burns = []
 
+    log.info("Processing fires for year {}".format(year))
+
     # loop through all fires in list
     for fire in zip(
         list(firelist.burnid), [round(a) for a in list(firelist.area)]
@@ -90,7 +92,7 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
         # note id and target burned forest area
         burn_id = fire[0]
         target_area = fire[1]
-
+        log.debug("burn_id: {}, target_area: {}".format(burn_id, target_area))
         # because we are looping through the fires, applying them individually
         # it is necessary to make sure the fire's ignition location has not
         # already burned *this year*
@@ -107,8 +109,6 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
         )
 
         # initialize tracking variables for current individual fire
-        # count the iterations of fire growth
-        iteration = 1
         # define fire growth increment area based on % provided
         increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
         # start the ellipse size as the target size
@@ -132,16 +132,21 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
             # record the values (iteration, (elipse), burned_area, diff)
             ellipse_list.append(
                 {
-                    "iteration": iteration,
+                    "iteration": len(ellipse_list) + 1,
                     "ellipse": (rr, cc),
                     "burned_forest_area": burned_forest_area,
+                    "ellipse_area": ellipse_area,
                     "difference": abs(target_area - burned_forest_area)
                 }
             )
 
-            # stop if target met, otherwise increment ellipse area
+            # stop if target met,
             if burned_forest_area >= target_area:
                 target_area_met = True
+            # bail after 1000 iterations to prevent endless loops
+            if len(ellipse_list) > 1000:
+                raise RuntimeError("Cannot meet target area")
+            # otherwise increment ellipse area
             else:
                 ellipse_area = ellipse_area + increment
 
@@ -155,11 +160,14 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
         else:
             result = min(ellipse_list[-2:], key=lambda x: x["difference"])
 
-        # apply the burn to the output burned image
-        burn_image[result["ellipse"][0], result["ellipse"][1]] = year
+        # create an image with just the burn ellipse, identify forested within
+        # (there is probably a more memory efficent way to do this?)
+        burn = np.zeros(shape=burn_image.shape)
+        burn[result["ellipse"][0], result["ellipse"][1]] = 1
+        burn[forest_current != 1] = 0
 
-        # set forested areas in burn ellipse back to 0
-        burn_image[forest_current == 0] = 0
+        # apply the burn to the output burned image
+        burn_image[burn == 1] = year
 
         # apply the burn to the forest status image
         forest_current[result["ellipse"][0], result["ellipse"][1]] = 0
@@ -170,6 +178,7 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
             {
                 "burn_id": burn_id,
                 "iteration": result["iteration"],
+                "ellipse_area": result["ellipse_area"],
                 "burned_forest_area": result["burned_forest_area"]
             }
         )
@@ -182,6 +191,8 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
 def write_fires(runid, region, year, burn_image, burn_list, out_path, out_csv, burn_year=False):
     """Write burn image, burn list to disk, calculate and write salvage areas
     """
+    log.debug("Writing burns and salvage to {}".format(out_path))
+
     # write all burn_id, iteration, burned_forest_area data to csv
     with open(out_csv, 'a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=burn_list[0].keys())
@@ -203,7 +214,7 @@ def write_fires(runid, region, year, burn_image, burn_list, out_path, out_csv, b
         crs = src.crs
 
     # output file names are: <region>_<runid>_<year>_burns.tif
-    filename = "_".join([str(x) for x in region, runid, year])
+    filename = "_".join([str(x) for x in [region, runid, year]])
     burn_tiff = os.path.join(out_path, "{}_burns.tif".format(filename))
     salvage_tiff = os.path.join(out_path, "{}_salvage.tif".format(filename))
 

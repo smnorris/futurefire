@@ -10,9 +10,9 @@ config = {
     "regions": "data/regions.tif",
     "region_lookup":
         {
-            1: "Coast",
-            2: "Northern Interior",
-            3: "Southern Interior"
+            "Coast": 1,
+            "Northern Interior": 2,
+            "Southern Interior": 3
         },
     # bounds are  "xmin ymin xmax ymax" in target area preserving projection
     # (EPSG:3005, BC Albers)

@@ -2,6 +2,7 @@ import os
 import logging
 from subprocess import Popen, PIPE
 import subprocess
+import csv
 
 import click
 import pandas
@@ -144,40 +145,43 @@ def load(config_file, wksp):
 @cli.command()
 @click.argument("scenario_csv", type=click.Path(exists=True))
 @click.option("--config_file", "-c", type=click.Path(exists=True), help="Path to configuration file")
-@click.option("--runid", help="Process only burns with this runid")
+@click.option("--runid", help="Process only burns with this runid", type=int)
 @click.option("--region", help="Process only burns in this region")
-@click.option("--year", help="Process only burns for this year")
+@click.option("--year", help="Process only burns for this year", type=int)
 @click.option("--forest_image", type=click.Path(exists=True), help="Path to alternative forest image", default=os.path.join(config["wksp"], "inventory.tif"))
-def burn(scenario_csv, config_file, runid, region, year, forest_image):
+@click.option("-n", help="Number of fires to process per year (for testing)", type=int)
+def burn(scenario_csv, config_file, runid, region, year, forest_image, n):
     """Read scenario csv and apply fires to the landscape
     """
+    if config_file:
+        util.load_config(config_file)
     # load scenario csv and find unique run/region/year values
     fires_df = pandas.read_csv(scenario_csv)
-
-    # filter fire records to work with based on options
-    if runid:
-        if runid in runids:
-            fires = fires_df["runid"] == runid
-        else:
-            raise ValueError("runid {} not present in {}".format(str(runid), scenario_csv))
-    if region:
-        if region in regions:
-            fires = fires_df["region"] == region
-        else:
-            raise ValueError("region {} not present in {}".format(region, scenario_csv))
-    if year:
-        if year in years:
-            fires = fires_df["year"] == year
-        else:
-            raise ValueError("year {} not present in {}".format(year, scenario_csv))
 
     runids = sorted(list(fires_df.runid.unique()))
     regions = sorted(list(fires_df.region.unique()))
     years = sorted(list(fires_df.year.unique()))
 
+    # filter fire records to work with based on options
+    if runid:
+        if runid in runids:
+            fires_df = fires_df[fires_df["runid"] == runid]
+        else:
+            raise ValueError("runid {} not present in {}".format(str(runid), scenario_csv))
+    if region:
+        if region in regions:
+            fires_df = fires_df[fires_df["region"] == region]
+        else:
+            raise ValueError("region {} not present in {}".format(region, scenario_csv))
+    if year:
+        if year in years:
+            fires_df = fires_df[fires_df["year"] == year]
+        else:
+            raise ValueError("year {} not present in {}".format(year, scenario_csv))
+
     # load source forested image
     with rasterio.open(forest_image) as src:
-        forest = src.read()
+        forest = src.read(1)
 
     # create output csv for logging individual fire stats
     # (how many iterations to create, actual burnt forest area)
@@ -186,34 +190,38 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image):
     out_path = os.path.join(config["outputs"], scenario)
     util.make_sure_path_exists(out_path)
     burn_csv = os.path.join(out_path, scenario+"_burns.csv")
-    with open(out_csv, 'w', newline='') as csvfile:
+    with open(burn_csv, 'w', newline='') as csvfile:
         fieldnames = ["burnid", "iteration", "burned_forest_area"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
     # iterate through the region/run/years
     for region in regions:
-        fires =  fires[fires['region'] == region]
+        fires_df =  fires_df[fires_df['region'] == region]
 
-        # restrict processing to given region
-        region_forest = forest[region_image == config["region_lookup"][region]]
+        # open regions file
+        with rasterio.open(config["regions"]) as src:
+            regions = src.read(1)
+
+        # set forest for other regions to zero so they don't get processed
+        forest[regions != config["region_lookup"][region]] = 0
 
         for runid in runids:
-            fires = fires['runid'] == runid
+            fires_df = fires_df['runid'] == runid
 
             # initialize forest tracking raster for the run
             forest_current = region_forest.copy()
 
             for year in years:
-                fires = fires['year'] == year
+                fires_df = fires_df['year'] == year
                 # initialize output burned year raster
                 burn_image = np.zeros(shape=forest.shape)
 
                 # create burns
-                forest_current, burn_image, burn_list = futurefire.apply_fires(fires, forest_current, burn_image, year)
+                forest_current, burn_image, burn_list = futurefire.apply_fires(fires_df, forest_current, burn_image, year, n=n)
 
                 # write burns to disk
-                futurefire.write_fires(runid, region, year, burned, burns, outpath, outcsv)
+                futurefire.write_fires(runid, region, year, burn_image, burn_list, out_path, burn_csv)
 
                 # set forest=1 where it has been regen years since burned
                 forest_current[burned == (year - config["regen"])] = 1
