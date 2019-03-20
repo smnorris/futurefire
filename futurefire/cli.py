@@ -6,6 +6,7 @@ import csv
 
 import click
 import pandas
+import numpy as np
 import rasterio
 
 import futurefire
@@ -23,7 +24,9 @@ def cli():
 
 
 @cli.command()
-@click.option("--config_file", "-c", type=click.Path(exists=True), help="Configuration file")
+@click.option(
+    "--config_file", "-c", type=click.Path(exists=True), help="Configuration file"
+)
 @click.option("--wksp", "-w", help="Override config workspace")
 def load(config_file, wksp):
     """
@@ -43,23 +46,25 @@ def load(config_file, wksp):
     util.make_sure_path_exists(config["wksp"])
 
     # reproject to area preserving coordinate reference system
-    cmd1 = ["ogr2ogr",
+    cmd1 = [
+        "ogr2ogr",
         "-f",
         "GPKG",
         "-t_srs",
         "EPSG:3005",
         os.path.join(config["wksp"], "roads.gpkg"),
         config["inputs_gdb"],
-        config["roads"]
+        config["roads"],
     ]
-    cmd2 = ["ogr2ogr",
+    cmd2 = [
+        "ogr2ogr",
         "-f",
         "GPKG",
         "-t_srs",
         "EPSG:3005",
         os.path.join(config["wksp"], "inventory.gpkg"),
         config["inputs_gdb"],
-        config["inventory"]
+        config["inventory"],
     ]
     cmds = [cmd1, cmd2]
     for cmd in cmds:
@@ -87,7 +92,7 @@ def load(config_file, wksp):
         "COMPRESS=DEFLATE",
         "-q",
         os.path.join(config["wksp"], "inventory.gpkg"),
-        os.path.join(config["wksp"], "inventory.tif")
+        os.path.join(config["wksp"], "inventory.tif"),
     ]
 
     cmd2 = [
@@ -112,7 +117,7 @@ def load(config_file, wksp):
         "COMPRESS=DEFLATE",
         "-q",
         os.path.join(config["wksp"], "roads.gpkg"),
-        os.path.join(config["wksp"], "roads.tif")
+        os.path.join(config["wksp"], "roads.tif"),
     ]
     cmds = [cmd1, cmd2]
     for cmd in cmds:
@@ -122,7 +127,8 @@ def load(config_file, wksp):
         proc.wait()
 
     # finally, buffer the roads
-    cmd = ["gdal_proximity.py",
+    cmd = [
+        "gdal_proximity.py",
         "-ot",
         "byte",
         "-co",
@@ -134,7 +140,7 @@ def load(config_file, wksp):
         "-fixed-buf-val",
         "1",
         os.path.join(config["wksp"], "roads.tif"),
-        os.path.join(config["wksp"], "roads_buf.tif")
+        os.path.join(config["wksp"], "roads_buf.tif"),
     ]
     log.info(" ".join(cmd))
     subprocess.run(cmd)
@@ -142,11 +148,20 @@ def load(config_file, wksp):
 
 @cli.command()
 @click.argument("scenario_csv", type=click.Path(exists=True))
-@click.option("--config_file", "-c", type=click.Path(exists=True), help="Path to configuration file")
+@click.option(
+    "--config_file",
+    "-c",
+    type=click.Path(exists=True),
+    help="Path to configuration file",
+)
 @click.option("--runid", help="Process only burns with this runid", type=int)
 @click.option("--region", help="Process only burns in this region")
 @click.option("--year", help="Process only burns for this year", type=int)
-@click.option("--forest_tif", type=click.Path(exists=True), help="Override config path to forest image")
+@click.option(
+    "--forest_tif",
+    type=click.Path(exists=True),
+    help="Override config path to forest image",
+)
 @click.option("-n", help="Number of fires to process per year (for testing)", type=int)
 def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     """Read scenario csv and apply fires to the landscape
@@ -168,7 +183,9 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
         if runid in runids:
             fires_df = fires_df[fires_df["runid"] == runid]
         else:
-            raise ValueError("runid {} not present in {}".format(str(runid), scenario_csv))
+            raise ValueError(
+                "runid {} not present in {}".format(str(runid), scenario_csv)
+            )
     if region:
         if region in regions:
             fires_df = fires_df[fires_df["region"] == region]
@@ -180,6 +197,12 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
         else:
             raise ValueError("year {} not present in {}".format(year, scenario_csv))
 
+    # reload the distinct values after filtered by options
+    if runid or region or year:
+        runids = sorted(list(fires_df.runid.unique()))
+        regions = sorted(list(fires_df.region.unique()))
+        years = sorted(list(fires_df.year.unique()))
+
     # load source forested image
     with rasterio.open(forest_tif) as src:
         forest = src.read(1)
@@ -190,43 +213,62 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     scenario = os.path.splitext(os.path.basename(scenario_csv))[0]
     out_path = os.path.join(config["outputs"], scenario)
     util.make_sure_path_exists(out_path)
-    burn_csv = os.path.join(out_path, scenario+"_burns.csv")
-    with open(burn_csv, 'w', newline='') as csvfile:
-        fieldnames = ["burnid", "iteration", "burned_forest_area"]
+    burn_csv = os.path.join(out_path, scenario + "_burns.csv")
+    with open(burn_csv, "w", newline="") as csvfile:
+        fieldnames = [
+            "burnid",
+            "year",
+            "region",
+            "runid",
+            "target_area",
+            "iteration",
+            "burned_forest_area",
+            "ellipse_area",
+        ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
     # iterate through the region/run/years
     for region in regions:
-        fires_df =  fires_df[fires_df['region'] == region]
+        log.info("Processing region {}".format(region))
 
         # open regions file
         with rasterio.open(config["regions"]) as src:
             regions = src.read(1)
 
         # set forest for other regions to zero so they don't get processed
-        forest[regions != config["region_lookup"][region]] = 0
+        region_forest = forest.copy()
+        region_forest[regions != config["region_lookup"][region]] = 0
 
         for runid in runids:
-            fires_df = fires_df['runid'] == runid
+            log.info("Processing runid {}".format(runid))
 
             # initialize forest tracking raster for the run
             forest_current = region_forest.copy()
 
             for year in years:
-                fires_df = fires_df['year'] == year
+                # get fires for given region/runid/year combo
+                fires = fires_df[
+                    (fires_df["region"] == region)
+                    & (fires_df["runid"] == runid)
+                    & (fires_df["year"] == year)
+                ]
                 # initialize output burned year raster
                 burn_image = np.zeros(shape=forest.shape)
 
                 # create burns
-                forest_current, burn_image, burn_list = futurefire.apply_fires(fires_df, forest_current, burn_image, year, n=n)
+                forest_current, burn_image, burn_list = futurefire.apply_fires(
+                    fires, forest_current, burn_image, year, n=n
+                )
 
                 # write burns to disk
-                futurefire.write_fires(runid, region, year, burn_image, burn_list, out_path, burn_csv)
+                futurefire.write_fires(
+                    runid, region, year, burn_image, burn_list, out_path, burn_csv
+                )
 
                 # set forest=1 where it has been regen years since burned
-                forest_current[burned == (year - config["regen"])] = 1
+                forest_current[burn_image == (year - config["regen"])] = 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()
