@@ -83,7 +83,6 @@ def load(config_file, wksp):
         "-tr",
         str(config["cell_size"]),
         str(config["cell_size"]),
-        "-tap",
         "-co",
         "COMPRESS=DEFLATE",
         "-q",
@@ -109,7 +108,6 @@ def load(config_file, wksp):
         "-tr",
         str(config["cell_size"]),
         str(config["cell_size"]),
-        "-tap",
         "-co",
         "COMPRESS=DEFLATE",
         "-q",
@@ -148,13 +146,16 @@ def load(config_file, wksp):
 @click.option("--runid", help="Process only burns with this runid", type=int)
 @click.option("--region", help="Process only burns in this region")
 @click.option("--year", help="Process only burns for this year", type=int)
-@click.option("--forest_image", type=click.Path(exists=True), help="Path to alternative forest image", default=os.path.join(config["wksp"], "inventory.tif"))
+@click.option("--forest_tif", type=click.Path(exists=True), help="Override config path to forest image")
 @click.option("-n", help="Number of fires to process per year (for testing)", type=int)
-def burn(scenario_csv, config_file, runid, region, year, forest_image, n):
+def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     """Read scenario csv and apply fires to the landscape
     """
     if config_file:
         util.load_config(config_file)
+    if not forest_tif:
+        forest_tif = os.path.join(config["wksp"], "inventory.tif")
+
     # load scenario csv and find unique run/region/year values
     fires_df = pandas.read_csv(scenario_csv)
 
@@ -180,7 +181,7 @@ def burn(scenario_csv, config_file, runid, region, year, forest_image, n):
             raise ValueError("year {} not present in {}".format(year, scenario_csv))
 
     # load source forested image
-    with rasterio.open(forest_image) as src:
+    with rasterio.open(forest_tif) as src:
         forest = src.read(1)
 
     # create output csv for logging individual fire stats

@@ -3,11 +3,11 @@
 # See sample_config.cfg
 
 config = {
-    "wksp": "data",
-    "inputs_gdb": "data/inputs.gdb",
+    "wksp": "wksp",
+    "inputs_gdb": "inputs/inputs.gdb",
     "roads": "roads",
     "inventory": "inventory",
-    "regions": "data/regions.tif",
+    "regions": "inputs/regions.tif",
     "region_lookup":
         {
             "Coast": 1,
