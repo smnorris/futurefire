@@ -42,7 +42,7 @@ def burn_ellipse(r, c, area, image):
     b = a * ratio
 
     # define random rotation (0-360 degrees in 1 degree increments)
-    rotation = random.choice([radians(deg) for deg in range(1, 360, 1)])
+    rotation = random.choice([radians(deg) for deg in range(config["fire_rotation_min"], config["fire_rotation_max"], config["fire_rotation_increment"])])
 
     # create ellipse
     rr, cc = ellipse(r, c, a, b, image.shape, rotation=rotation)
@@ -66,7 +66,7 @@ def random_index(forest):
     return idx
 
 
-def apply_fires(firelist, forest_current, burn_image, year, n=None):
+def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=None):
     """For a given year, burn a list of fires [(id, area),] into forest_current,
     burn_image and write to csv
     """
@@ -109,7 +109,7 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
 
         # initialize tracking variables for current individual fire
         # define fire growth increment area based on % provided
-        increment = (int(config["fire_ellipse_pct_growth"]) * .01) * target_area
+        increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
         # start the ellipse size as the target size
         ellipse_area = target_area
         # empty list for holding iterations as the fire grows
@@ -173,9 +173,13 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
 
         # record burn data as dict for dump to tabular format
         # so we can report on individual burns
+        # add year, region, runid to
         burns.append(
             {
                 "burn_id": burn_id,
+                "year": year,
+                "runid": runid,
+                "region": region,
                 "target_area": target_area,
                 "iteration": result["iteration"],
                 "burned_forest_area": result["burned_forest_area"],
@@ -189,15 +193,11 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
 
 
 def write_fires(
-    runid, region, year, burn_image, burn_list, out_path, out_csv, burn_year=False
+    runid, year, burn_image, burn_list, out_path, out_csv, burn_year=False
 ):
     """Write burn image, list of burns to disk
     """
     log.debug("Writing burns and salvage to {}".format(out_path))
-
-    # add year, region, runid to output csv just to make things simple
-    b = {"year": year, "region": region, "runid": runid}
-    burn_list = [{**a, **b} for a in burn_list]
 
     # write all burn_id, iteration, burned_forest_area data to csv
     with open(out_csv, "a", newline="") as csvfile:
@@ -228,10 +228,9 @@ def write_fires(
     with rasterio.open(config["regions"]) as src:
         profile = src.profile
 
-    # output file names are: <region>_<runid>_<year>_burns.tif
-    filename = "_".join([str(x) for x in [region, runid, year]])
+    # output file names are: <runid>_<year>_burns.tif
+    filename = "_".join([str(x) for x in [runid, year]])
     burn_tiff = os.path.join(out_path, "{}_burns.tif".format(filename))
-    salvage_tiff = os.path.join(out_path, "{}_salvage.tif".format(filename))
 
     # write the burn image
     with rasterio.open(burn_tiff, "w", **profile) as dst:

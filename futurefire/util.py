@@ -30,8 +30,15 @@ def load_config(config_file):
         config[key] = cfg_dict[key]
     # split the bounds string into a list
     config["bounds"] = [b for b in config["bounds"].split()]
+    # convert int values to ints
+    region_lookup = dict(cfg["REGION_LOOKUP"])
+    region_lookup = {k: int(v) for (k, v) in region_lookup.items()}
+    int_keys = ["buffer","cell_size","fire_axis_ratio_min","fire_axis_ratio_max","fire_rotation_min","fire_rotation_max","fire_rotation_increment","fire_ellipse_pct_growth","regen"]
+    for key in int_keys:
+        config[key] = int(config[key])
+
     # add region lookup dict to main config dict
-    config["region_lookup"]: dict(cfg["REGION_LOOKUP"])
+    config["region_lookup"]: region_lookup
 
 
 def configure_logging():

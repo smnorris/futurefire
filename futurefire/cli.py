@@ -203,10 +203,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
         regions = sorted(list(fires_df.region.unique()))
         years = sorted(list(fires_df.year.unique()))
 
-    # load source forested image
-    with rasterio.open(forest_tif) as src:
-        forest = src.read(1)
-
     # create output csv for logging individual fire stats
     # (how many iterations to create, actual burnt forest area)
     # file is in outputs folder, name is scenario_burn.csv
@@ -228,46 +224,49 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-    # iterate through the region/run/years
-    for region in regions:
-        log.info("Processing region {}".format(region))
+    # open regions file
+    with rasterio.open(config["regions"]) as src:
+        regions = src.read(1)
 
-        # open regions file
-        with rasterio.open(config["regions"]) as src:
-            regions = src.read(1)
+    # loop through burns in order of run / region / year
+    for runid in runids:
+        log.info("Processing runid {}".format(runid))
 
-        # set forest for other regions to zero so they don't get processed
-        region_forest = forest.copy()
-        region_forest[regions != config["region_lookup"][region]] = 0
+        # load forest raster
+        with rasterio.open(forest_tif) as src:
+            forest = src.read(1)
 
-        for runid in runids:
-            log.info("Processing runid {}".format(runid))
+        for year in years:
+            log.info("Processing year {}".format(year))
 
-            # initialize forest tracking raster for the run
-            forest_current = region_forest.copy()
+            # initialize output burned year raster
+            burn_image = np.zeros(shape=forest.shape)
 
-            for year in years:
+            for region in regions:
+                log.debug("Processing region {}".format(region))
+
                 # get fires for given region/runid/year combo
                 fires = fires_df[
                     (fires_df["region"] == region)
                     & (fires_df["runid"] == runid)
                     & (fires_df["year"] == year)
                 ]
-                # initialize output burned year raster
-                burn_image = np.zeros(shape=forest.shape)
+                # initialize forest for region of interest
+                forest_region = forest.copy()
+                forest_region[regions != config["region_lookup"][region]] = 0
 
                 # create burns
                 forest_current, burn_image, burn_list = futurefire.apply_fires(
-                    fires, forest_current, burn_image, year, n=n
+                    fires, forest, burn_image, runid, region, year, n=n
                 )
 
-                # write burns to disk
-                futurefire.write_fires(
-                    runid, region, year, burn_image, burn_list, out_path, burn_csv
-                )
-
-                # set forest=1 where it has been regen years since burned
-                forest_current[burn_image == (year - config["regen"])] = 1
+            # write burns to disk
+            futurefire.write_fires(
+                runid, year, burn_image, burn_list, out_path, burn_csv
+            )
+            # set forest=1 where it has been regen years since burned
+            # (& correct region)
+            forest[(burn_image == (year - config["regen"])) & (regions == config["region_lookup"][region])] = 1
 
 
 if __name__ == "__main__":

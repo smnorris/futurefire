@@ -15,8 +15,12 @@ config = {
     # buffer and cell size are m
     "buffer": 500,
     "cell_size": 100,
+    # define fire shape and orientation
     "fire_axis_ratio_min": 20,
     "fire_axis_ratio_max": 80,
+    "fire_rotation_min": 1,
+    "fire_rotation_max": 360,
+    "fire_rotation_increment": 1,
     # increasing the pct growth reduces iterations and processing time
     "fire_ellipse_pct_growth": 1,
     "regen": 10,
