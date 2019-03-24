@@ -11,9 +11,9 @@ def test_config():
     util.load_config(os.path.join(os.path.dirname(__file__), 'test_config.cfg'))
     assert config["inputs_gdb"] == "tests/data/data.gdb.zip"
     assert config["region_lookup"] == {
-            1: "Coast",
-            2: "Northern Interior",
-            3: "Southern Interior"
+            "Coast": 1,
+            "Northern Interior": 2,
+            "Southern Interior": 3
         }
     assert config["outputs"] == "tests/outputs"
     assert config["bounds"][0] == "1368548"
@@ -44,6 +44,7 @@ def test_apply_one_fire(tmpdir):
     futurefire.apply_fires(firelist, forest_image, burn_image, 2021)
     # assert that csv / burn / forest all have correct sums
 
+
 def test_apply_several_fires(tmpdir):
     firelist = pd.read_csv(os.path.join(os.path.dirname(__file__),"scenario_2.csv"))
 
@@ -60,6 +61,7 @@ def test_apply_several_fires(tmpdir):
     out_csv = tmpdir.join("burned.csv")
     futurefire.apply_fires(firelist, forest_image, burn_image, 2021)
     # assert that csv / burn / forest all make sense
+
 
 def test_apply_yearly_fires(tmpdir):
     fires_df = pd.read_csv(os.path.join(os.path.dirname(__file__),"scenario_3.csv"))

@@ -1,6 +1,6 @@
 import os
 import logging
-from subprocess import Popen, PIPE
+from subprocess import Popen
 import subprocess
 import csv
 

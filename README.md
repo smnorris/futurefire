@@ -1,6 +1,11 @@
 # futurefire
 
-Generate random burned forest areas for future fire scenarios.
+ Generate annual burned forest areas as rasters of random ellipses. Buffer roads and overlay with burn raster to create potential salvage areas.
+
+
+# Requirements
+
+Python >=3.5 (tested with 3.7.2)
 
 
 # Installation
@@ -19,12 +24,12 @@ With pip:
     cd futurefire
     pip install .
 
-If installing via pip on Windows, you will likely have to first download install [pre-compiled gdal and rasterio Python wheels](https://www.lfd.uci.edu/~gohlke/pythonlibs/). Conda handles this for you.
+If installing via pip on Windows, you will need to first download and install the appropriate [pre-compiled gdal and rasterio Python wheels](https://www.lfd.uci.edu/~gohlke/pythonlibs/) for your version of Python. Conda handles this for you.
 
 
 # Data prep
 
-The script handles most data prep but to quickly ensure no edge areas were lost, the BC regions raster was manually prepared:
+The script handles most data prep but to quickly ensure no edge areas are lost, the BC regions raster was manually prepared from the NRCAN provided regions polygons:
 
   - edit polygons to extend beyond BC Border / into ocean (ensuring regions cover all areas)
   - reproject to `EPSG:3005`
@@ -33,25 +38,24 @@ The script handles most data prep but to quickly ensure no edge areas were lost,
   - extract only cells on land in BC (where `isbc.tif=1`)
   - output is provided as `inputs\regions.tif`
 
+
 # Usage
 
-Load data to raster:
+Load input inventory and road data to raster, buffer road raster:
 
     futurefire load
 
 
-Create all burns for a given `scenario.csv` file using default configuration settings:
+Create all burns for a given `scenario.csv` file (with required columns `burnid`, `year`, `region`, `runid`, `area`) using default configuration settings:
 
     futurefire burn scenario.csv
-
 
 To override the default configuration, use the `--config_file` option to provide `futurefire` with the path to your config file:
 
     futurefire load --config_file path/to/myconfig.cfg
     futurefire burn scenario.csv --config_file path/to/myconfig.cfg
 
-[`sample_config.cfg`](sample_config.cfg) shows the parameters that can be configured.
-
+[`sample_config.cfg`](sample_config.cfg) illustrates the parameters that can be configured.
 
 The `burn` command includes additional options for running just a specific region / run / year. There is also an option for using a forest image other the default raster created by `futurefire load` (default is derived from the `inventory` layer specified in the config):
 
@@ -82,14 +86,16 @@ For each region / run / year, iterate through fires in the scenario csv:
   - randomly place fire centres within forested area
   - create randomly oriented ellipse at fire centre with target area noted in scenario csv
   - determine how much forest is within the ellipse
-  - expand the ellipse by 1% until forest area within ellipse meets or exceeds the target burn area
-  - choose the ellipse with the burned forest area closest to the target burn area
-  - note the burn in the output burn image
-  - note that the burn has occured in the forest image
+  - expand the ellipse until forest area within ellipse meets or exceeds the target burn area (default expansion is 5% area)
+  - choose the ellipse with the burned forest area closest to the target burn area (from the final two expansions)
+  - record the burn in the output burn image
+  - record that the burn has occured in the forest image
 
 Once all fires have been placed for the given region / run / year:
   - set burned areas in the forest image back to forest if the regen interval has taken place
-  - export burn geotiff and generate / export a salvage geotiff (areas of burn that overlaps the buffered roads image) to the folder defined in config `output`
+  - export burn geotiff
+
+Finally, generate / export a salvage geotiff (areas of burn that overlap the buffered roads image) to the `output` folder defined in config
 
 
 # Development and testing

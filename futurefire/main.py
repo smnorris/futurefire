@@ -109,7 +109,7 @@ def apply_fires(firelist, forest_current, burn_image, year, n=None):
 
         # initialize tracking variables for current individual fire
         # define fire growth increment area based on % provided
-        increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
+        increment = (int(config["fire_ellipse_pct_growth"]) * .01) * target_area
         # start the ellipse size as the target size
         ellipse_area = target_area
         # empty list for holding iterations as the fire grows
