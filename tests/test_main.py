@@ -8,7 +8,7 @@ from futurefire import util
 
 
 def test_config():
-    util.load_config(os.path.join(os.path.dirname(__file__), 'test_config.cfg'))
+    util.load_config(os.path.join(os.path.dirname(__file__), 'test.cfg'))
     assert config["inputs_gdb"] == "tests/data/data.gdb.zip"
     assert config["region_lookup"] == {
             "Coast": 1,
@@ -85,3 +85,16 @@ def test_apply_yearly_fires(tmpdir):
         futurefire.apply_fires(fires_df, forest_image, burn_image, 1, 'Region,', year)
 
     # assert that csv / burn / forest all make sense
+
+
+def test_regen():
+    # test that regen logic works by burning 2 cells per year in 4 cell grid
+    config["regen"] = 1
+    fires = pd.DataFrame.from_dict({'burnid': [1,], 'area': [2,]})
+    years = [2020, 2021, 2022]
+    forest_image = np.ones([2, 2])
+    burn_image = np.zeros(forest_image.shape)
+    for year in years:
+        futurefire.apply_fires(fires, forest_image, burn_image, 1, 'Region,', year)
+        forest_image[burn_image == (year - config["regen"])] = 1
+    assert forest_image.sum() == 2

@@ -86,7 +86,7 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
     log.info("Processing fires for year {}".format(year))
 
     # loop through all fires in list
-    for fire in zip(list(firelist.burnid), [round(a) for a in list(firelist.area)]):
+    for fire in zip(list(firelist["burnid"]), [round(a) for a in list(firelist["area"])]):
 
         # note id and target burned forest area
         burn_id = fire[0]
