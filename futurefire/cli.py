@@ -5,7 +5,7 @@ import subprocess
 import csv
 
 import click
-import pandas
+import pandas as pd
 import numpy as np
 import rasterio
 
@@ -172,7 +172,7 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
         forest_tif = os.path.join(config["wksp"], "inventory.tif")
 
     # load scenario csv and find unique run/region/year values
-    fires_df = pandas.read_csv(scenario_csv)
+    fires_df = pd.read_csv(scenario_csv)
 
     runids = sorted(list(fires_df.runid.unique()))
     regions = sorted(list(fires_df.region.unique()))
@@ -226,7 +226,7 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
     # open regions file
     with rasterio.open(config["regions"]) as src:
-        regions = src.read(1)
+        regions_image = src.read(1)
 
     # loop through burns in order of run / region / year
     for runid in runids:
@@ -234,16 +234,15 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
         # load forest raster
         with rasterio.open(forest_tif) as src:
-            forest = src.read(1)
+            forest_prov = src.read(1)
 
         for year in years:
-            log.info("Processing year {}".format(year))
 
-            # initialize output burned year raster
-            burn_image = np.zeros(shape=forest.shape)
+            # initialize output burned year raster and list
+            burn_image = np.zeros(shape=forest_prov.shape)
+            burn_list = []
 
             for region in regions:
-                log.debug("Processing region {}".format(region))
 
                 # get fires for given region/runid/year combo
                 fires = fires_df[
@@ -252,12 +251,12 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                     & (fires_df["year"] == year)
                 ]
                 # initialize forest for region of interest
-                forest_region = forest.copy()
-                forest_region[regions != config["region_lookup"][region]] = 0
+                forest_reg = forest_prov.copy()
+                forest_reg[regions_image != config["region_lookup"][region]] = 0
 
                 # create burns
-                forest_current, burn_image, burn_list = futurefire.apply_fires(
-                    fires, forest, burn_image, runid, region, year, n=n
+                burn_list = burn_list + futurefire.apply_fires(
+                    fires, forest_reg, forest_prov, burn_image, runid, region, year, n=n
                 )
 
             # write burns to disk
@@ -266,7 +265,7 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
             )
             # set forest=1 where it has been regen years since burned
             # (& correct region)
-            forest[(burn_image == (year - config["regen"])) & (regions == config["region_lookup"][region])] = 1
+            forest_prov[(burn_image == (year - config["regen"])) & (regions == config["region_lookup"][region])] = 1
 
 
 if __name__ == "__main__":

@@ -66,8 +66,8 @@ def random_index(forest):
     return idx
 
 
-def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=None):
-    """For a given year, burn a list of fires [(id, area),] into forest_current,
+def apply_fires(firelist, forest_reg, forest_prov, burn_image, runid, region, year, n=None):
+    """For a given year, burn a list of fires [(id, area),] into forest_reg,
     burn_image and write to csv
     """
     # if specified, only process n records
@@ -75,7 +75,7 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
         firelist = firelist[:n]
 
     # generate a shuffled index of all cells with forest
-    forest_idx = random_index(forest_current)
+    forest_idx = random_index(forest_reg)
 
     # start from the top of the shuffled list
     idx_position = 0
@@ -83,7 +83,7 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
     # initialize a list to track output burns for writing to csv
     burns = []
 
-    log.info("Processing fires for year {}".format(year))
+    log.info("Processing fires for region {}, year {}".format(region, year))
 
     # loop through all fires in list
     for fire in zip(list(firelist["burnid"]), [round(a) for a in list(firelist["area"])]):
@@ -95,7 +95,7 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
         # because we are looping through the fires, applying them individually
         # it is necessary to make sure the fire's ignition location has not
         # already burned *this year*
-        flattened = forest_current.flatten()
+        flattened = forest_reg.flatten()
         while flattened[forest_idx[idx_position]] == 0:
             idx_position += 1
             if idx_position > len(forest_idx):
@@ -126,7 +126,7 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
             rr, cc = burn_ellipse(ignition_r, ignition_c, ellipse_area, burn_image)
 
             # calc current forest area within the created burn ellipse
-            burned_forest_area = forest_current[rr, cc].sum()
+            burned_forest_area = forest_reg[rr, cc].sum()
 
             # record the values (iteration, (elipse), burned_area, diff)
             ellipse_list.append(
@@ -163,13 +163,18 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
         # (there is probably a more memory efficent way to do this?)
         burn = np.zeros(shape=burn_image.shape)
         burn[result["ellipse"][0], result["ellipse"][1]] = 1
-        burn[forest_current != 1] = 0
+        burn[forest_reg != 1] = 0
 
         # apply the burn to the output burned image
         burn_image[burn == 1] = year
 
-        # apply the burn to the forest status image
-        forest_current[result["ellipse"][0], result["ellipse"][1]] = 0
+        # apply the burn to the regional forest status image
+        # (for finding forest for current timestep/region)
+        forest_reg[result["ellipse"][0], result["ellipse"][1]] = 0
+
+        # also apply to the provincial forest status image
+        # (for tracking forest over time)
+        forest_prov[result["ellipse"][0], result["ellipse"][1]] = 0
 
         # record burn data as dict for dump to tabular format
         # so we can report on individual burns
@@ -189,7 +194,7 @@ def apply_fires(firelist, forest_current, burn_image, runid, region, year, n=Non
         # increment the index to the random 'ignition points'
         idx_position += 1
 
-    return (forest_current, burn_image, burns)
+    return burns
 
 
 def write_fires(
@@ -197,7 +202,7 @@ def write_fires(
 ):
     """Write burn image, list of burns to disk
     """
-    log.debug("Writing burns and salvage to {}".format(out_path))
+    log.info("Writing burn data to {}".format(out_path))
 
     # write all burn_id, iteration, burned_forest_area data to csv
     with open(out_csv, "a", newline="") as csvfile:

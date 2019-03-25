@@ -42,7 +42,7 @@ def test_apply_one_fire(tmpdir):
 
     # apply fire
     out_csv = tmpdir.join("burned.csv")
-    futurefire.apply_fires(firelist, forest_image, burn_image, 1, 'Region', 2021)
+    futurefire.apply_fires(firelist, forest_image, forest_image, burn_image, 1, 'Region', 2021)
     # assert that csv / burn / forest all have correct sums
 
 
@@ -60,7 +60,7 @@ def test_apply_several_fires(tmpdir):
 
     # apply fire
     out_csv = tmpdir.join("burned.csv")
-    futurefire.apply_fires(firelist, forest_image, burn_image, 1, 'Region', 2021)
+    futurefire.apply_fires(firelist, forest_image, forest_image, burn_image, 1, 'Region', 2021)
     # assert that csv / burn / forest all make sense
 
 
@@ -82,7 +82,7 @@ def test_apply_yearly_fires(tmpdir):
     out_csv = tmpdir.join("burned.csv")
 
     for year in years:
-        futurefire.apply_fires(fires_df, forest_image, burn_image, 1, 'Region,', year)
+        futurefire.apply_fires(fires_df, forest_image, forest_image, burn_image, 1, 'Region,', year)
 
     # assert that csv / burn / forest all make sense
 
@@ -95,6 +95,6 @@ def test_regen():
     forest_image = np.ones([2, 2])
     burn_image = np.zeros(forest_image.shape)
     for year in years:
-        futurefire.apply_fires(fires, forest_image, burn_image, 1, 'Region,', year)
+        futurefire.apply_fires(fires, forest_image, forest_image, burn_image, 1, 'Region,', year)
         forest_image[burn_image == (year - config["regen"])] = 1
     assert forest_image.sum() == 2
