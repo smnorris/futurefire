@@ -85,6 +85,8 @@ def apply_fires(firelist, forest_reg, forest_prov, burn_image, runid, region, ye
 
     log.info("Processing fires for region {}, year {}".format(region, year))
 
+    flattened = forest_reg.flatten()
+
     # loop through all fires in list
     for fire in zip(list(firelist["burnid"]), [round(a) for a in list(firelist["area"])]):
 
@@ -95,7 +97,7 @@ def apply_fires(firelist, forest_reg, forest_prov, burn_image, runid, region, ye
         # because we are looping through the fires, applying them individually
         # it is necessary to make sure the fire's ignition location has not
         # already burned *this year*
-        flattened = forest_reg.flatten()
+
         while flattened[forest_idx[idx_position]] == 0:
             idx_position += 1
             if idx_position > len(forest_idx):
