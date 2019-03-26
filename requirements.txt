@@ -1,4 +1,3 @@
-pgdata
 scikit-image
 rasterio
 click
