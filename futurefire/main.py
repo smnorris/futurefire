@@ -90,7 +90,7 @@ def apply_fires(
     # initialize a list to track output burns for writing to csv
     burns = []
 
-    log.info("Processing fires for region {}, year {}".format(region, year))
+    log.info("Processing runid: {}, region: {}, year: {}".format(runid, region, year))
 
     flattened = forest_reg.flatten()
 
@@ -119,8 +119,6 @@ def apply_fires(
         )
 
         # initialize tracking variables for current individual fire
-        # define fire growth increment area based on % provided
-        increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
         # start the ellipse size as the target size
         ellipse_area = target_area
         # empty list for holding iterations as the fire grows
@@ -153,12 +151,31 @@ def apply_fires(
             # stop if target met,
             if burned_forest_area >= target_area:
                 target_area_met = True
-            # bail after 1000 iterations to prevent endless loops
-            if len(ellipse_list) > 1000:
-                raise RuntimeError("Cannot meet target area")
+
             # otherwise increment ellipse area
-            else:
+            elif len(ellipse_list) < 1000:
+                if len(ellipse_list) <= 100:
+                    increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
+                # double the pct_growth increment for iterations 100-500
+                elif len(ellipse_list) > 100 and len(ellipse_list) <= 500:
+                    increment = (config["fire_ellipse_pct_growth"] * 2 * .01) * target_area
+
+                # quadruple the pct_growth increment for iterations 500-1000
+                elif len(ellipse_list) > 500:
+                    increment = (config["fire_ellipse_pct_growth"] * 4 * .01) * target_area
+
                 ellipse_area = ellipse_area + increment
+
+            # after 1000 expansions, give up and restart burn in another spot
+            elif len(ellipse_list) >= 1000:
+                log.info("Cannot meet target area for given ignition point, generating a new one".format())
+                # get new ignition point
+                idx_position += 1
+                ignition_r, ignition_c = np.unravel_index(
+                    forest_idx[idx_position], burn_image.shape
+                )
+                ellipse_area = target_area
+                ellipse_list = []
 
         # if there was only one iteration, use it
         if len(ellipse_list) == 1:
@@ -213,7 +230,7 @@ def write_fires(
 ):
     """Write burn image, list of burns to disk
     """
-    log.info("Writing burn data to {}".format(out_path))
+    log.info("Writing outputs for runid:{} ,year:{}".format(runid, year))
 
     # write all burn_id, iteration, burned_forest_area data to csv
     with open(out_csv, "a", newline="") as csvfile:

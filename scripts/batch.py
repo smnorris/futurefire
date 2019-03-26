@@ -1,9 +1,13 @@
-from subprocess import Popen
+import subprocess
+from multiprocessing import Pool
+import os
 
-cmds = []
-for i in range(1, 101):
-    cmds.append(["futurefire", "burn", "inputs/lowscenario.csv", "--runid", i])
 
-procs_list = [Popen(cmd) for cmd in cmds]
-for proc in procs_list:
-    proc.wait()
+def run(runid):
+    cmd = ["futurefire", "burn", "inputs/lowscenario.csv", "--runid", str(runid)]
+    subprocess.run(cmd)
+
+
+if __name__ == '__main__':
+    with Pool(os.cpu_count() - 1) as p:
+        p.map(run, range(1, 5))

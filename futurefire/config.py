@@ -23,7 +23,7 @@ config = {
     "fire_rotation_max": 360,
     "fire_rotation_increment": 1,
     # increasing the pct growth reduces iterations and processing time
-    "fire_ellipse_pct_growth": 1,
+    "fire_ellipse_pct_growth": 5,
     "regen": 10,
     "outputs": "outputs",
     "log_file": "futurefire.log",
