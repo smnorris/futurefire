@@ -3,4 +3,5 @@ include sample_config.cfg
 include data/*tif
 include tests/test_config.cfg
 include tests/data/data.gdb.zip
+include tests/*.csv
 
