@@ -23,7 +23,7 @@ def run_high(runid):
 @click.argument("draw_min", type=click.INT)
 @click.argument("draw_max", type=int)
 def batch(scenario, draw_min, draw_max):
-    with Pool(os.cpu_count() - 1) as p:
+    with Pool(10) as p:
         if scenario == "high":
             p.map(run_high, range(draw_min, draw_max + 1))
         if scenario == "low":
