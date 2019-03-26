@@ -1,6 +1,6 @@
 # a very crude batch processing script
 
-# EG process low scenario draws 10-20 in parallel:
+# for example, process low scenario draws 10-20 in parallel:
 # $ python batch.py low 10 20
 import subprocess
 from multiprocessing import Pool
@@ -20,8 +20,8 @@ def run_high(runid):
 
 @click.command()
 @click.argument("scenario")
-@click.argument("draw_min")
-@click.argument("draw_max")
+@click.argument("draw_min", type=click.INT)
+@click.argument("draw_max", type=int)
 def batch(scenario, draw_min, draw_max):
     with Pool(os.cpu_count() - 1) as p:
         if scenario == "high":
