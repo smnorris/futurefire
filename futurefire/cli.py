@@ -239,7 +239,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
     # loop through burns in order of run / region / year
     for runid in runids:
-        log.info("Processing runid {}".format(runid))
 
         # load forest raster
         with rasterio.open(forest_tif) as src:

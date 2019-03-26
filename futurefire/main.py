@@ -90,7 +90,7 @@ def apply_fires(
     # initialize a list to track output burns for writing to csv
     burns = []
 
-    log.info("Processing runid: {}, region: {}, year: {}".format(runid, region, year))
+    log.info("Processing - runid:{} region:{} year:{}".format(runid, region, year))
 
     flattened = forest_reg.flatten()
 
@@ -230,7 +230,7 @@ def write_fires(
 ):
     """Write burn image, list of burns to disk
     """
-    log.info("Writing outputs for runid:{} ,year:{}".format(runid, year))
+    log.info("Writing - runid:{} year:{}".format(runid, year))
 
     # write all burn_id, iteration, burned_forest_area data to csv
     with open(out_csv, "a", newline="") as csvfile:
