@@ -8,6 +8,7 @@ config = {
     "roads": "roads",
     "inventory": "inventory",
     "regions": "inputs/regions.tif",
+    "gcbm_template": "inputs/gcbm_template.tif",
     "region_lookup": {"Coast": 1, "Northern Interior": 2, "Southern Interior": 3},
     # bounds are  "xmin ymin xmax ymax" in target area preserving projection
     # (EPSG:3005, BC Albers)

@@ -1,17 +1,13 @@
 import os
 import csv
 import random
-from math import ceil
 from math import pi
 from math import radians
 from math import sqrt
 import logging
 
 import rasterio
-from rasterio import features
-from affine import Affine
-import pandas
-import numpy.ma as ma
+from rasterio.warp import reproject
 import numpy as np
 from skimage.draw import ellipse
 
@@ -42,7 +38,16 @@ def burn_ellipse(r, c, area, image):
     b = a * ratio
 
     # define random rotation (0-360 degrees in 1 degree increments)
-    rotation = random.choice([radians(deg) for deg in range(config["fire_rotation_min"], config["fire_rotation_max"], config["fire_rotation_increment"])])
+    rotation = random.choice(
+        [
+            radians(deg)
+            for deg in range(
+                config["fire_rotation_min"],
+                config["fire_rotation_max"],
+                config["fire_rotation_increment"],
+            )
+        ]
+    )
 
     # create ellipse
     rr, cc = ellipse(r, c, a, b, image.shape, rotation=rotation)
@@ -66,7 +71,9 @@ def random_index(forest):
     return idx
 
 
-def apply_fires(firelist, forest_reg, forest_prov, burn_image, runid, region, year, n=None):
+def apply_fires(
+    firelist, forest_reg, forest_prov, burn_image, runid, region, year, n=None
+):
     """For a given year, burn a list of fires [(id, area),] into forest_reg,
     burn_image and write to csv
     """
@@ -88,7 +95,9 @@ def apply_fires(firelist, forest_reg, forest_prov, burn_image, runid, region, ye
     flattened = forest_reg.flatten()
 
     # loop through all fires in list
-    for fire in zip(list(firelist["burnid"]), [round(a) for a in list(firelist["area"])]):
+    for fire in zip(
+        list(firelist["burnid"]), [round(a) for a in list(firelist["area"])]
+    ):
 
         # note id and target burned forest area
         burn_id = fire[0]
@@ -200,7 +209,7 @@ def apply_fires(firelist, forest_reg, forest_prov, burn_image, runid, region, ye
 
 
 def write_fires(
-    runid, year, burn_image, burn_list, out_path, out_csv, burn_year=False
+    runid, year, burn_image, burn_list, out_path, out_csv, src_profile, dst_profile
 ):
     """Write burn image, list of burns to disk
     """
@@ -223,41 +232,65 @@ def write_fires(
         )
         writer.writerows(burn_list)
 
-    # a burn_image value of 1 (rather than year) should save some disk space
-    if burn_year:
-        dtype = "int16"
-    else:
-        burn_image[burn_image > 0] = 1
-        dtype = "uint8"
-        burn_image = burn_image.astype(dtype)
+    # record burn_image value of 1 (rather than year)
+    burn_image[burn_image > 0] = 1
+    burn_image = burn_image.astype("uint8")
 
-    # get output crs, transform etc from the input regions tiff
-    with rasterio.open(config["regions"]) as src:
-        profile = src.profile
-
-    # output file names are: <runid>_<year>_burns.tif
-    filename = "_".join([str(x) for x in [runid, year]])
-    burn_tiff = os.path.join(out_path, "{}_burns.tif".format(filename))
-
-    # write the burn image
-    with rasterio.open(burn_tiff, "w", **profile) as dst:
-        dst.write(burn_image, 1)
-
-
-def create_salvage(run, year):
-    """Read burn tiff and roads buff tiff, overlay
-    """
+    # open roads image and identify salvage areas
     roads_tiff = os.path.join(config["wksp"], "roads_buf.tif")
     with rasterio.open(roads_tiff) as src:
-        roads = src.read(1)
+        roads_image = src.read(1)
+    salvage_image = np.zeros(burn_image.shape)
+    # road buffer values :
+    # 0 - road
+    # 1 - buffer
+    # 255 - nodata
+    salvage_image[(roads_image <= 1) & (burn_image == 1)] = 1
+    salvage_image = salvage_image.astype("uint8")
 
-    burns_tiff = os.path.join(config["output"], "run_year_burn.tif")
-    with rasterio.open(burns_tiff) as src:
-        burns = src.read(1)
+    # write to drawNNN/burn_YYYY , salvage_YYYY
+    folder = "draw" + str(runid).zfill(3)
 
-    salvage = burns[roads == 1]
+    burn_tiff = os.path.join(out_path, folder, "burn_" + str(year) + ".tif")
+    salvage_tiff = os.path.join(out_path, folder, "salvage_" + str(year) + ".tif")
 
-    # write salvage to disk
-    salvage_tiff = os.path.join(config["output"], "run_year_salvage.tif")
-    with rasterio.open(salvage_tiff, "w", **profile) as dst:
-        dst.write(salvage, 1)
+    util.make_sure_path_exists(os.path.join(out_path, folder))
+
+    # define output raster profile based on template (dst)
+    out_kwargs = src_profile.copy()
+    out_kwargs.update(
+        crs=dst_profile["crs"],
+        transform=dst_profile["transform"],
+        width=dst_profile["width"],
+        height=dst_profile["height"],
+    )
+
+    # Adjust block size if necessary.
+    if "blockxsize" in out_kwargs and out_kwargs["width"] < out_kwargs["blockxsize"]:
+        del out_kwargs["blockxsize"]
+    if "blockysize" in out_kwargs and out_kwargs["height"] < out_kwargs["blockysize"]:
+        del out_kwargs["blockysize"]
+
+    with rasterio.open(burn_tiff, "w", **out_kwargs) as dst:
+        reproject(
+            source=burn_image,
+            destination=rasterio.band(dst, 1),
+            src_transform=src_profile["transform"],
+            src_crs=src_profile["crs"],
+            dst_transform=out_kwargs["transform"],
+            dst_crs=out_kwargs["crs"],
+            resampling=0,
+            num_threads=2,
+        )
+
+    with rasterio.open(salvage_tiff, "w", **out_kwargs) as dst:
+        reproject(
+            source=salvage_image,
+            destination=rasterio.band(dst, 1),
+            src_transform=src_profile["transform"],
+            src_crs=src_profile["crs"],
+            dst_transform=out_kwargs["transform"],
+            dst_crs=out_kwargs["crs"],
+            resampling=0,
+            num_threads=2,
+        )

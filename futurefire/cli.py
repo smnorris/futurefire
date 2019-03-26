@@ -127,6 +127,10 @@ def load(config_file, wksp):
         proc.wait()
 
     # finally, buffer the roads
+    # note output values:
+    # 0 - road
+    # 1 - buffer
+    # 255 - nodata
     cmd = [
         "gdal_proximity.py",
         "-ot",
@@ -227,6 +231,11 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     # open regions file
     with rasterio.open(config["regions"]) as src:
         regions_image = src.read(1)
+        src_profile = src.profile
+
+    # load gcbm template raster
+    with rasterio.open(config["gcbm_template"]) as template_ds:
+        dst_profile = template_ds.profile
 
     # loop through burns in order of run / region / year
     for runid in runids:
@@ -259,13 +268,23 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                     fires, forest_reg, forest_prov, burn_image, runid, region, year, n=n
                 )
 
-            # write burns to disk
             futurefire.write_fires(
-                runid, year, burn_image, burn_list, out_path, burn_csv
+                runid,
+                year,
+                burn_image,
+                burn_list,
+                out_path,
+                burn_csv,
+                src_profile,
+                dst_profile,
             )
+
             # set forest=1 where it has been regen years since burned
             # (& correct region)
-            forest_prov[(burn_image == (year - config["regen"])) & (regions == config["region_lookup"][region])] = 1
+            forest_prov[
+                (burn_image == (year - config["regen"]))
+                & (regions == config["region_lookup"][region])
+            ] = 1
 
 
 if __name__ == "__main__":

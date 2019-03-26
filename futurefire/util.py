@@ -37,7 +37,17 @@ def load_config(config_file):
         cfg_dict["region_lookup"]: region_lookup
 
     # convert int values to ints
-    int_keys = ["buffer","cell_size","fire_axis_ratio_min","fire_axis_ratio_max","fire_rotation_min","fire_rotation_max","fire_rotation_increment","fire_ellipse_pct_growth","regen"]
+    int_keys = [
+        "buffer",
+        "cell_size",
+        "fire_axis_ratio_min",
+        "fire_axis_ratio_max",
+        "fire_rotation_min",
+        "fire_rotation_max",
+        "fire_rotation_increment",
+        "fire_ellipse_pct_growth",
+        "regen",
+    ]
     for key in int_keys:
         if key in cfg_dict.keys():
             cfg_dict[key] = int(cfg_dict[key])
