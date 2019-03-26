@@ -280,7 +280,7 @@ def write_fires(
             dst_transform=out_kwargs["transform"],
             dst_crs=out_kwargs["crs"],
             resampling=0,
-            num_threads=1
+            num_threads=1,
         )
 
     with rasterio.open(salvage_tiff, "w", **out_kwargs) as dst:
@@ -292,5 +292,5 @@ def write_fires(
             dst_transform=out_kwargs["transform"],
             dst_crs=out_kwargs["crs"],
             resampling=0,
-            num_threads=1
+            num_threads=1,
         )
