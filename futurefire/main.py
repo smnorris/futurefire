@@ -249,11 +249,12 @@ def write_fires(
         )
         writer.writerows(burn_list)
 
-    # record burn_image value of 1 (rather than year)
-    burn_image[burn_image > 0] = 1
-    burn_image = burn_image.astype("uint8")
+    # record burn_image value of 1 rather than year to keep things simple
+    # (but retain the burn_image with years for tracking regen)
+    burn_ones = np.zeros(burn_image.shape, dtype="uint8")
+    burn_ones[burn_image > 0] = 1
 
-    # open road buffer and thlb file and identify salvage areas
+    # read road buffer and thlb
     roads_tiff = os.path.join(config["wksp"], "roads_buf.tif")
     thlb_tiff = os.path.join(config["wksp"], "thlb.tif")
     with rasterio.open(roads_tiff) as src:
@@ -261,13 +262,11 @@ def write_fires(
     with rasterio.open(thlb_tiff) as src:
         thlb_image = src.read(1)
 
-    salvage_image = np.zeros(burn_image.shape)
-    # road buffer values :
-    # 0 - road
-    # 1 - buffer
-    # 255 - nodata
-    salvage_image[(roads_image <= 1) & (burn_image == 1) & (thlb_image==1)] = 1
-    salvage_image = salvage_image.astype("uint8")
+    # create salvage where burn = 1, thlb = 1 and (road = 1 or road = 0)
+    # (road buffer has value 0 for road location and 255 for nodata,
+    # it might be worth making it a simple 1/0 raster in the load process)
+    salvage_image = np.zeros(burn_ones.shape, dtype="uint8")
+    salvage_image[(roads_image <= 1) & (burn_ones == 1) & (thlb_image == 1)] = 1
 
     # write to drawNNN/burn_YYYY , salvage_YYYY
     folder = "draw" + str(runid).zfill(3)
@@ -294,7 +293,7 @@ def write_fires(
 
     with rasterio.open(burn_tiff, "w", **out_kwargs) as dst:
         reproject(
-            source=burn_image,
+            source=burn_ones,
             destination=rasterio.band(dst, 1),
             src_transform=src_profile["transform"],
             src_crs=src_profile["crs"],

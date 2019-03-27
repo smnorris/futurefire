@@ -288,13 +288,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                     fires, forest_reg, forest_prov, burn_image, runid, region, year, n=n
                 )
 
-                # set forest=1 where it has been regen years since burned
-                # (& correct region)
-                forest_prov[
-                    (burn_image == (year - config["regen"]))
-                    & (regions == config["region_lookup"][region])
-                ] = 1
-
             futurefire.write_fires(
                 runid,
                 year,
@@ -306,6 +299,13 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                 dst_profile,
             )
 
+            # set forest=1 where it has been regen years since burned
+            # (& correct region)
+            forest_prov[
+                (burn_image == (year - config["regen"]))
+                & (regions == config["region_lookup"][region])
+            ] = 1
+
 
 @cli.command()
 @click.argument("scenario_csv", type=click.Path(exists=True))
@@ -315,7 +315,7 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     type=click.Path(exists=True),
     help="Path to configuration file",
 )
-def status(scenario_csv, config_file, output_path):
+def status(scenario_csv, config_file):
     """For given scenario, report on percentage each draw complete
 
     Note that this works only from root futurefire directory and presumes the output folder name for the scenario has not been changed.
@@ -332,7 +332,7 @@ def status(scenario_csv, config_file, output_path):
         path = os.path.join(os.getcwd(), out_path, "draw"+str(run).zfill(3))
         if os.path.exists(path):
             n_tifs = len(glob.glob(os.path.join(path, "*.tif")))
-            pct = str(n_tifs / (len(years) * 2))
+            pct = str(round(n_tifs / (len(years) * 2), 2))
             click.echo("draw"+str(run).zfill(3)+": "+pct)
 
 
