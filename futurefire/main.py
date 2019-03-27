@@ -253,16 +253,20 @@ def write_fires(
     burn_image[burn_image > 0] = 1
     burn_image = burn_image.astype("uint8")
 
-    # open roads image and identify salvage areas
+    # open road buffer and thlb file and identify salvage areas
     roads_tiff = os.path.join(config["wksp"], "roads_buf.tif")
+    thlb_tiff = os.path.join(config["wksp"], "thlb.tif")
     with rasterio.open(roads_tiff) as src:
         roads_image = src.read(1)
+    with rasterio.open(thlb_tiff) as src:
+        thlb_image = src.read(1)
+
     salvage_image = np.zeros(burn_image.shape)
     # road buffer values :
     # 0 - road
     # 1 - buffer
     # 255 - nodata
-    salvage_image[(roads_image <= 1) & (burn_image == 1)] = 1
+    salvage_image[(roads_image <= 1) & (burn_image == 1) & (thlb_image==1)] = 1
     salvage_image = salvage_image.astype("uint8")
 
     # write to drawNNN/burn_YYYY , salvage_YYYY

@@ -120,7 +120,27 @@ def load(config_file, wksp):
         os.path.join(config["wksp"], "roads.gpkg"),
         os.path.join(config["wksp"], "roads.tif"),
     ]
-    cmds = [cmd1, cmd2]
+    cmd3 = [
+        "gdal_rasterize",
+        "-l",
+        "inventory",
+        "-a",
+        "THLB",
+        "-te",
+        config["bounds"][0],
+        config["bounds"][1],
+        config["bounds"][2],
+        config["bounds"][3],
+        "-tr",
+        str(config["cell_size"]),
+        str(config["cell_size"]),
+        "-co",
+        "COMPRESS=DEFLATE",
+        "-q",
+        os.path.join(config["wksp"], "inventory.gpkg"),
+        os.path.join(config["wksp"], "thlb.tif"),
+    ]
+    cmds = [cmd1, cmd2, cmd3]
     for cmd in cmds:
         log.info(" ".join(cmd))
     procs_list = [Popen(cmd) for cmd in cmds]
@@ -268,6 +288,13 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                     fires, forest_reg, forest_prov, burn_image, runid, region, year, n=n
                 )
 
+                # set forest=1 where it has been regen years since burned
+                # (& correct region)
+                forest_prov[
+                    (burn_image == (year - config["regen"]))
+                    & (regions == config["region_lookup"][region])
+                ] = 1
+
             futurefire.write_fires(
                 runid,
                 year,
@@ -278,13 +305,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                 src_profile,
                 dst_profile,
             )
-
-            # set forest=1 where it has been regen years since burned
-            # (& correct region)
-            forest_prov[
-                (burn_image == (year - config["regen"]))
-                & (regions == config["region_lookup"][region])
-            ] = 1
 
 
 @cli.command()

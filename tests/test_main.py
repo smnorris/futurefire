@@ -84,7 +84,7 @@ def test_apply_yearly_fires(tmpdir):
     for year in years:
         futurefire.apply_fires(fires_df, forest_image, forest_image, burn_image, 1, 'Region,', year)
 
-    # assert that csv / burn / forest all make sense
+    # todo: assert that csv / burn / forest / salvage all make sense
 
 
 def test_regen():

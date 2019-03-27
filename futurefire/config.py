@@ -10,9 +10,8 @@ config = {
     "regions": "inputs/regions.tif",
     "gcbm_template": "inputs/gcbm_template.tif",
     "region_lookup": {"Coast": 1, "Northern Interior": 2, "Southern Interior": 3},
-    # bounds are  "xmin ymin xmax ymax" in target area preserving projection
-    # (EPSG:3005, BC Albers)
-    "bounds": "159587.5 173787.5 1881187.5 1748187.5",
+    # default bounds is BC Albers, entire province
+    "bounds": ["159587.5", "173787.5", "1881187.5", "1748187.5"],
     # buffer and cell size are m
     "buffer": 500,
     "cell_size": 100,
