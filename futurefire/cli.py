@@ -3,6 +3,7 @@ import logging
 from subprocess import Popen
 import subprocess
 import csv
+import glob
 
 import click
 import pandas as pd
@@ -284,6 +285,35 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                 (burn_image == (year - config["regen"]))
                 & (regions == config["region_lookup"][region])
             ] = 1
+
+
+@cli.command()
+@click.argument("scenario_csv", type=click.Path(exists=True))
+@click.option(
+    "--config_file",
+    "-c",
+    type=click.Path(exists=True),
+    help="Path to configuration file",
+)
+def status(scenario_csv, config_file, output_path):
+    """For given scenario, report on percentage each draw complete
+
+    Note that this works only from root futurefire directory and presumes the output folder name for the scenario has not been changed.
+    """
+    if config_file:
+        util.load_config(config_file)
+    fires_df = pd.read_csv(scenario_csv)
+    runids = sorted(list(fires_df.runid.unique()))
+    years = sorted(list(fires_df.year.unique()))
+    scenario = os.path.splitext(os.path.basename(scenario_csv))[0]
+    out_path = os.path.join(config["outputs"], scenario)
+    # count tifs in each folder
+    for run in runids:
+        path = os.path.join(os.getcwd(), out_path, "draw"+str(run).zfill(3))
+        if os.path.exists(path):
+            n_tifs = len(glob.glob(os.path.join(path, "*.tif")))
+            pct = str(n_tifs / (len(years) * 2))
+            click.echo("draw"+str(run).zfill(3)+": "+pct)
 
 
 if __name__ == "__main__":
