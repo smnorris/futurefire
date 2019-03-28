@@ -1,5 +1,6 @@
 from futurefire.main import burn_ellipse
 from futurefire.main import apply_fires
+from futurefire.main import burn_year
 from futurefire.main import write_fires
 
 import logging

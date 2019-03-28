@@ -88,13 +88,45 @@ def test_apply_yearly_fires(tmpdir):
 
 
 def test_regen():
-    # test that regen logic works by burning 2 cells per year in 4 cell grid
-    config["regen"] = 1
-    fires = pd.DataFrame.from_dict({'burnid': [1,], 'area': [2,]})
-    years = [2020, 2021, 2022]
-    forest_image = np.ones([2, 2])
-    burn_image = np.zeros(forest_image.shape)
+
+    from futurefire.config import config
+
+    # construct a small dummy scenario
+    config["region_lookup"] = {1: 1, 2: 2}
+    config["regen"] = 3
+
+    # 4 years of fires, 2 regions, 1 ha per burn
+    fires_df = pd.DataFrame.from_dict(
+        {'runid':  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+         'region': [1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
+         'year':   [10, 10, 11, 11, 12, 12, 13, 13, 14, 14],
+         'burnid': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+         'area':   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+    )
+
+    runid = 1
+    regions = sorted(list(fires_df.region.unique()))
+    years = sorted(list(fires_df.year.unique()))
+
+    # 10 x 10 forest checkerboard, 1/2 forest, 1/2 non forested.
+    forest_image = np.ones([6, 6])
+    forest_image[:3, :3] = 0
+    forest_image[3:, 3:] = 0
+
+    # two regions, 1 and 2
+    regions = [1, 2]
+    regions_image = np.ones([6, 6])
+    regions_image[3:] = 2
+
+    # initialize output burned year raster
+    burn_image = np.zeros(shape=forest_image.shape)
+
+    # apply annual burns
     for year in years:
-        futurefire.apply_fires(fires, forest_image, forest_image, burn_image, 1, 'Region,', year)
-        forest_image[burn_image == (year - config["regen"])] = 1
-    assert forest_image.sum() == 2
+        burn_list = futurefire.burn_year(fires_df, runid, year, regions, forest_image, regions_image, burn_image)
+
+    # check that burned areas add up as expected (1ha per year = 10ha)
+    assert len(burn_image[burn_image > 0]) >= 10
+
+    # check that regen wored (at year=14, cells burned at year 11 are now 1)
+    assert int(np.unique(forest_image[burn_image == 11])) == 1

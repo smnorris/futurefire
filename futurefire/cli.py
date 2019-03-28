@@ -203,6 +203,9 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     regions = sorted(list(fires_df.region.unique()))
     years = sorted(list(fires_df.year.unique()))
 
+    if 0 in years:
+        raise ValueError("Year 0 in {} is invalid.".format(scenario_csv))
+
     # filter fire records to work with based on options
     if runid:
         if runid in runids:
@@ -263,31 +266,25 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
         # load forest raster
         with rasterio.open(forest_tif) as src:
-            forest_prov = src.read(1)
+            forest_image = src.read(1)
+
+        burn_image = np.zeros(shape=forest_image.shape)
 
         for year in years:
+            # apply fires to images and record info about each fire
+            # in a list
+            burn_list = futurefire.burn_year(
+                fires_df,
+                runid,
+                year,
+                regions,
+                forest_image,
+                regions_image,
+                burn_image,
+                n,
+            )
 
-            # initialize output burned year raster and list
-            burn_image = np.zeros(shape=forest_prov.shape)
-            burn_list = []
-
-            for region in regions:
-
-                # get fires for given region/runid/year combo
-                fires = fires_df[
-                    (fires_df["region"] == region)
-                    & (fires_df["runid"] == runid)
-                    & (fires_df["year"] == year)
-                ]
-                # initialize forest for region of interest
-                forest_reg = forest_prov.copy()
-                forest_reg[regions_image != config["region_lookup"][region]] = 0
-
-                # create burns
-                burn_list = burn_list + futurefire.apply_fires(
-                    fires, forest_reg, forest_prov, burn_image, runid, region, year, n=n
-                )
-
+            # write fire data to disk
             futurefire.write_fires(
                 runid,
                 year,
@@ -298,13 +295,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                 src_profile,
                 dst_profile,
             )
-
-            # set forest=1 where it has been regen years since burned
-            # (& correct region)
-            forest_prov[
-                (burn_image == (year - config["regen"]))
-                & (regions == config["region_lookup"][region])
-            ] = 1
 
 
 @cli.command()
@@ -329,11 +319,11 @@ def status(scenario_csv, config_file):
     out_path = os.path.join(config["outputs"], scenario)
     # count tifs in each folder
     for run in runids:
-        path = os.path.join(os.getcwd(), out_path, "draw"+str(run).zfill(3))
+        path = os.path.join(os.getcwd(), out_path, "draw" + str(run).zfill(3))
         if os.path.exists(path):
             n_tifs = len(glob.glob(os.path.join(path, "*.tif")))
             pct = str(round(n_tifs / (len(years) * 2), 2))
-            click.echo("draw"+str(run).zfill(3)+": "+pct)
+            click.echo("draw" + str(run).zfill(3) + ": " + pct)
 
 
 if __name__ == "__main__":

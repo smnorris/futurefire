@@ -72,7 +72,7 @@ def random_index(forest):
 
 
 def apply_fires(
-    firelist, forest_reg, forest_prov, burn_image, runid, region, year, n=None
+    firelist, forest_reg, forest_image, burn_image, runid, region, year, n=None
 ):
     """For a given year, burn a list of fires [(id, area),] into forest_reg,
     burn_image and write to csv
@@ -88,7 +88,7 @@ def apply_fires(
     idx_position = 0
 
     # initialize a list to track output burns for writing to csv
-    burns = []
+    burns_list = []
 
     log.info("Processing - runid:{} region:{} year:{}".format(runid, region, year))
 
@@ -158,17 +158,23 @@ def apply_fires(
                     increment = (config["fire_ellipse_pct_growth"] * .01) * target_area
                 # double the pct_growth increment for iterations 100-500
                 elif len(ellipse_list) > 100 and len(ellipse_list) <= 500:
-                    increment = (config["fire_ellipse_pct_growth"] * 2 * .01) * target_area
+                    increment = (
+                        config["fire_ellipse_pct_growth"] * 2 * .01
+                    ) * target_area
 
                 # quadruple the pct_growth increment for iterations 500-1000
                 elif len(ellipse_list) > 500:
-                    increment = (config["fire_ellipse_pct_growth"] * 4 * .01) * target_area
+                    increment = (
+                        config["fire_ellipse_pct_growth"] * 4 * .01
+                    ) * target_area
 
                 ellipse_area = ellipse_area + increment
 
             # after 1000 expansions, give up and restart burn in another spot
             elif len(ellipse_list) >= 1000:
-                log.info("Cannot meet target area for given ignition point, generating a new one".format())
+                log.info(
+                    "Cannot meet target area for given ignition point, generating a new one".format()
+                )
                 # get new ignition point
                 idx_position += 1
                 ignition_r, ignition_c = np.unravel_index(
@@ -202,12 +208,12 @@ def apply_fires(
 
         # also apply to the provincial forest status image
         # (for tracking forest over time)
-        forest_prov[result["ellipse"][0], result["ellipse"][1]] = 0
+        forest_image[result["ellipse"][0], result["ellipse"][1]] = 0
 
         # record burn data as dict for dump to tabular format
         # so we can report on individual burns
         # add year, region, runid to
-        burns.append(
+        burns_list.append(
             {
                 "burn_id": burn_id,
                 "year": year,
@@ -222,7 +228,7 @@ def apply_fires(
         # increment the index to the random 'ignition points'
         idx_position += 1
 
-    return burns
+    return burns_list
 
 
 def write_fires(
@@ -252,7 +258,7 @@ def write_fires(
     # record burn_image value of 1 rather than year to keep things simple
     # (but retain the burn_image with years for tracking regen)
     burn_ones = np.zeros(burn_image.shape, dtype="uint8")
-    burn_ones[burn_image > 0] = 1
+    burn_ones[burn_image == year] = 1
 
     # read road buffer and thlb
     roads_tiff = os.path.join(config["wksp"], "roads_buf.tif")
@@ -314,3 +320,34 @@ def write_fires(
             resampling=0,
             num_threads=1,
         )
+
+
+def burn_year(
+    fires_df, runid, year, regions, forest_image, regions_image, burn_image, n=None
+):
+    """Loop through regions, applying all fires for given year and returning
+    a list of all the fires burned
+    """
+    burn_list = []
+
+    for region in regions:
+
+        # get fires for given region/runid/year combo
+        fires = fires_df[
+            (fires_df["region"] == region)
+            & (fires_df["runid"] == runid)
+            & (fires_df["year"] == year)
+        ]
+        # initialize forest for region of interest
+        forest_reg = forest_image.copy()
+        forest_reg[regions_image != config["region_lookup"][region]] = 0
+
+        # create burns
+        burn_list = burn_list + apply_fires(
+            fires, forest_reg, forest_image, burn_image, runid, region, year, n=n
+        )
+
+    # set forest=1 where it has been regen years since burned
+    forest_image[burn_image == (year - config["regen"])] = 1
+
+    return burn_list
