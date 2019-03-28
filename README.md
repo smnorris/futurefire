@@ -76,9 +76,8 @@ The `burn` command includes additional options for running just a specific regio
 # Method
 
 ## load
-- rasterize inventory, creating 1ha grid in area preserving projection with raster extent/alignment matching a Hectares BC sample raster
-- rasterize roads, creating 1ha grid in area preserving projection
-- buffer the roads by distance specifiied in config (default 500m)
+- rasterize inventory, roads, thlb - creating 1ha grids in area preserving projection with raster extent/alignment matching Hectares BC sample raster
+- buffer the roads raster by distance specifiied in config (default 500m)
 
 ## burn
 
@@ -93,9 +92,8 @@ For each region / run / year, iterate through fires in the scenario csv:
 
 Once all fires have been placed for the given region / run / year:
   - set burned areas in the forest image back to forest if the regen interval has taken place
-  - export burn geotiff
-
-Finally, generate / export a salvage geotiff (areas of burn that overlap the buffered roads image) to the `output` folder defined in config
+  - generate potential salvage logging raster by overlaying the road buffer, thlb and burned area
+  - export burn and salvage to geotiff in the `output` folder defined in config
 
 
 # Development and testing
