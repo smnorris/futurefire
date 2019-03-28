@@ -71,15 +71,12 @@ def random_index(forest):
     return idx
 
 
-def apply_fires(
-    firelist, forest_reg, forest_image, burn_image, runid, region, year, n=None
-):
-    """For a given year, burn a list of fires [(id, area),] into forest_reg,
-    burn_image and write to csv
+def apply_fires(fires_df, forest_reg, forest_image, burn_image, n=None):
+    """burn list of fires inot provided images
     """
     # if specified, only process n records
     if n:
-        firelist = firelist[:n]
+        fires_df = fires_df[:n]
 
     # generate a shuffled index of all cells with forest
     forest_idx = random_index(forest_reg)
@@ -90,19 +87,19 @@ def apply_fires(
     # initialize a list to track output burns for writing to csv
     burns_list = []
 
-    log.info("Processing - runid:{} region:{} year:{}".format(runid, region, year))
-
     flattened = forest_reg.flatten()
 
     # loop through all fires in list
-    for fire in zip(
-        list(firelist["burnid"]), [round(a) for a in list(firelist["area"])]
-    ):
+    for i, fire in fires_df.iterrows():
+        run_id = fire["runid"]
+        year = fire["year"]
+        burn_id = fire["burnid"]
+        target_area = round(fire["area"])
+        region = fire["region"]
+        region_id = config["region_lookup"][region]
 
-        # note id and target burned forest area
-        burn_id = fire[0]
-        target_area = fire[1]
-        log.debug("burn_id: {}, target_area: {}".format(burn_id, target_area))
+        log.info("Processing - runid:{} year:{} regionid:{} burnid:{} target_area:{}".format(run_id, year, region_id, burn_id, target_area))
+
         # because we are looping through the fires, applying them individually
         # it is necessary to make sure the fire's ignition location has not
         # already burned *this year*
@@ -172,9 +169,7 @@ def apply_fires(
 
             # after 1000 expansions, give up and restart burn in another spot
             elif len(ellipse_list) >= 1000:
-                log.info(
-                    "Cannot meet target area for given ignition point, generating a new one".format()
-                )
+                log.info("More than 1000 expansions - runid:{} year:{} regionid:{} burnid:{} target_area:{}".format(run_id, year, region_id, burn_id, target_area))
                 # get new ignition point
                 idx_position += 1
                 ignition_r, ignition_c = np.unravel_index(
@@ -182,6 +177,10 @@ def apply_fires(
                 )
                 ellipse_area = target_area
                 ellipse_list = []
+
+            # log at 101 and 501
+            if len(ellipse_list) == 101 or len(ellipse_list) == 501:
+                log.info("N expansions = {} - runid:{} year:{} regionid:{} burnid:{} target_area:{}".format(len(ellipse_list), run_id, year, region_id, burn_id, target_area))
 
         # if there was only one iteration, use it
         if len(ellipse_list) == 1:
@@ -217,7 +216,7 @@ def apply_fires(
             {
                 "burn_id": burn_id,
                 "year": year,
-                "runid": runid,
+                "runid": run_id,
                 "region": region,
                 "target_area": target_area,
                 "iteration": result["iteration"],
@@ -236,7 +235,7 @@ def write_fires(
 ):
     """Write burn image, list of burns to disk
     """
-    log.info("Writing - runid:{} year:{}".format(runid, year))
+    log.info("Writing: runid:{} year:{}".format(runid, year))
 
     # write all burn_id, iteration, burned_forest_area data to csv
     with open(out_csv, "a", newline="") as csvfile:
@@ -318,7 +317,7 @@ def write_fires(
 
 
 def burn_year(
-    fires_df, runid, year, regions, forest_image, regions_image, burn_image, n=None
+    year_df, regions, forest_image, regions_image, burn_image, n=None
 ):
     """Loop through regions, applying all fires for given year and returning
     a list of all the fires burned
@@ -326,23 +325,18 @@ def burn_year(
     burn_list = []
 
     for region in regions:
-
-        # get fires for given region/runid/year combo
-        fires = fires_df[
-            (fires_df["region"] == region)
-            & (fires_df["runid"] == runid)
-            & (fires_df["year"] == year)
-        ]
+        # get fires for given region
+        region_df = year_df[year_df["region"] == region]
         # initialize forest for region of interest
         forest_reg = forest_image.copy()
         forest_reg[regions_image != config["region_lookup"][region]] = 0
 
         # create burns
         burn_list = burn_list + apply_fires(
-            fires, forest_reg, forest_image, burn_image, runid, region, year, n=n
-        )
+            region_df, forest_reg, forest_image, burn_image, n=n)
 
     # set forest=1 where it has been regen years since burned
+    year = year_df.year.unique()[0]
     forest_image[burn_image == (year - config["regen"])] = 1
 
     return burn_list

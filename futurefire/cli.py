@@ -251,8 +251,9 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
         # write to drawNNN/burn_YYYY , salvage_YYYY
         draw_path = os.path.join(out_path, "draw" + str(runid).zfill(3))
-        util.make_sure_path_exists()
+        util.make_sure_path_exists(draw_path)
         burn_csv = os.path.join(draw_path, "burns.csv")
+        run_df = fires_df[fires_df["runid"] == runid]
         with open(burn_csv, "w", newline="") as csvfile:
             fieldnames = [
                 "burnid",
@@ -276,10 +277,9 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
         for year in years:
             # apply fires to images and record info about each fire
             # in a list
+            year_df = run_df[run_df["year"] == year]
             burn_list = futurefire.burn_year(
-                fires_df,
-                runid,
-                year,
+                year_df,
                 regions,
                 forest_image,
                 regions_image,

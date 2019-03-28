@@ -42,7 +42,7 @@ def test_apply_one_fire(tmpdir):
 
     # apply fire
     out_csv = tmpdir.join("burned.csv")
-    futurefire.apply_fires(firelist, forest_image, forest_image, burn_image, 1, 'Region', 2021)
+    futurefire.apply_fires(firelist, forest_image, forest_image, burn_image)
     # assert that csv / burn / forest all have correct sums
 
 
@@ -60,28 +60,8 @@ def test_apply_several_fires(tmpdir):
 
     # apply fire
     out_csv = tmpdir.join("burned.csv")
-    futurefire.apply_fires(firelist, forest_image, forest_image, burn_image, 1, 'Region', 2021)
+    futurefire.apply_fires(firelist, forest_image, forest_image, burn_image)
     # assert that csv / burn / forest all make sense
-
-
-def test_apply_yearly_fires(tmpdir):
-    fires_df = pd.read_csv(os.path.join(os.path.dirname(__file__),"scenario_3.csv"))
-
-    years = sorted(list(fires_df.year.unique()))
-
-    # create a 100x100 image of 75% forest
-    forest_image = np.zeros([1000, 1000])
-    random_flat = np.random.choice(1000000, 800000, replace=False)
-    random_forest_idx = np.unravel_index(random_flat, forest_image.shape)
-    forest_image[random_forest_idx] = 1
-
-    # initialize a burn image of the same shape
-    burn_image = np.zeros(forest_image.shape)
-
-    for year in years:
-        futurefire.apply_fires(fires_df, forest_image, forest_image, burn_image, 1, 'Region,', year)
-
-    # todo: assert that csv / burn / forest / salvage all make sense
 
 
 def test_regen():
@@ -120,7 +100,8 @@ def test_regen():
 
     # apply annual burns
     for year in years:
-        burn_list = futurefire.burn_year(fires_df, runid, year, regions, forest_image, regions_image, burn_image)
+        fires = fires_df[fires_df["year"] == year]
+        burn_list = futurefire.burn_year(fires, regions, forest_image, regions_image, burn_image)
 
     # check that burned areas add up as expected (1ha per year => 9ha)
     # the area is not exact because of randomnes of ellipses
