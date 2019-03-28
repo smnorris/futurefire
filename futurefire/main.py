@@ -274,13 +274,8 @@ def write_fires(
     salvage_image = np.zeros(burn_ones.shape, dtype="uint8")
     salvage_image[(roads_image <= 1) & (burn_ones == 1) & (thlb_image == 1)] = 1
 
-    # write to drawNNN/burn_YYYY , salvage_YYYY
-    folder = "draw" + str(runid).zfill(3)
-
-    burn_tiff = os.path.join(out_path, folder, "burn_" + str(year) + ".tif")
-    salvage_tiff = os.path.join(out_path, folder, "salvage_" + str(year) + ".tif")
-
-    util.make_sure_path_exists(os.path.join(out_path, folder))
+    burn_tiff = os.path.join(out_path, "burn_" + str(year) + ".tif")
+    salvage_tiff = os.path.join(out_path, "salvage_" + str(year) + ".tif")
 
     # define output raster profile based on template (dst)
     out_kwargs = src_profile.copy()

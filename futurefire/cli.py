@@ -236,21 +236,6 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
     # file is in outputs folder, name is scenario_burn.csv
     scenario = os.path.splitext(os.path.basename(scenario_csv))[0]
     out_path = os.path.join(config["outputs"], scenario)
-    util.make_sure_path_exists(out_path)
-    burn_csv = os.path.join(out_path, scenario + "_burns.csv")
-    with open(burn_csv, "w", newline="") as csvfile:
-        fieldnames = [
-            "burnid",
-            "year",
-            "region",
-            "runid",
-            "target_area",
-            "iteration",
-            "burned_forest_area",
-            "ellipse_area",
-        ]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
 
     # open regions file
     with rasterio.open(config["regions"]) as src:
@@ -263,6 +248,24 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
     # loop through burns in order of run / region / year
     for runid in runids:
+
+        # write to drawNNN/burn_YYYY , salvage_YYYY
+        draw_path = os.path.join(out_path, "draw" + str(runid).zfill(3))
+        util.make_sure_path_exists()
+        burn_csv = os.path.join(draw_path, "burns.csv")
+        with open(burn_csv, "w", newline="") as csvfile:
+            fieldnames = [
+                "burnid",
+                "year",
+                "region",
+                "runid",
+                "target_area",
+                "iteration",
+                "burned_forest_area",
+                "ellipse_area",
+            ]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
 
         # load forest raster
         with rasterio.open(forest_tif) as src:
@@ -290,7 +293,7 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
                 year,
                 burn_image,
                 burn_list,
-                out_path,
+                draw_path,
                 burn_csv,
                 src_profile,
                 dst_profile,

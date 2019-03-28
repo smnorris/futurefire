@@ -21,7 +21,7 @@ def run_high(runid):
 @click.command()
 @click.argument("scenario")
 @click.argument("draw_min", type=click.INT)
-@click.argument("draw_max", type=int)
+@click.argument("draw_max", type=click.INT)
 def batch(scenario, draw_min, draw_max):
     with Pool(10) as p:
         if scenario == "high":
