@@ -302,13 +302,14 @@ def burn(scenario_csv, config_file, runid, region, year, forest_tif, n):
 
 @cli.command()
 @click.argument("scenario_csv", type=click.Path(exists=True))
+@click.option("-i", "--incomplete", is_flag=True, help="List only incomplete/missing draws")
 @click.option(
     "--config_file",
     "-c",
     type=click.Path(exists=True),
     help="Path to configuration file",
 )
-def status(scenario_csv, config_file):
+def status(scenario_csv, config_file, incomplete):
     """For given scenario, report on percentage each draw complete
 
     Note that this works only from root futurefire directory and presumes the output folder name for the scenario has not been changed.
@@ -326,7 +327,14 @@ def status(scenario_csv, config_file):
         if os.path.exists(path):
             n_tifs = len(glob.glob(os.path.join(path, "*.tif")))
             pct = str(round(n_tifs / (len(years) * 2), 2))
-            click.echo("draw" + str(run).zfill(3) + ": " + pct)
+            if pct != '1.0':
+                click.echo("draw" + str(run).zfill(3) + ": " + pct)
+            else:
+                if not incomplete:
+                    click.echo("draw" + str(run).zfill(3) + ": " + pct)
+        else:
+            if incomplete:
+                click.echo("draw" + str(run).zfill(3) + ": " + '0')
 
 
 if __name__ == "__main__":
