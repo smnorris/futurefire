@@ -1,4 +1,5 @@
-# A very crude batch processing script for processing draws in parallel
+# A very crude (but cross platform) batch processing script for
+# processing draws in parallel
 
 # For example, process low scenario draws 10-20:
 # $ python batch.py low 10 20
@@ -30,13 +31,18 @@ def run_high(runid):
 @click.option("-n", "--n_cores", default=10)
 def batch(scenario, draw_min, draw_max, draw_list, n_cores):
     with Pool(n_cores) as p:
-        if draw_min and scenario == "high":
-            p.map(run_high, range(draw_min, draw_max + 1))
-        elif draw_min and scenario == "low":
-            p.map(run_low, range(draw_min, draw_max + 1))
-        elif draw_list:
-            draws = draw_list.split(" ")
-            p.map(run_low, draws)
+        if scenario == "high":
+            if draw_min:
+                p.map(run_high, range(draw_min, draw_max + 1))
+            elif draw_list:
+                draws = draw_list.split(" ")
+                p.map(run_high, draws)
+        elif scenario == "low":
+            if draw_min:
+                p.map(run_low, range(draw_min, draw_max + 1))
+            elif draw_list:
+                draws = draw_list.split(" ")
+                p.map(run_low, draws)
 
 
 if __name__ == "__main__":
