@@ -89,21 +89,22 @@ def apply_fires(fires_df, forest_reg, forest_image, burn_image, n=None):
 
     flattened = forest_reg.flatten()
 
-    # loop through all fires in list
-    for i, fire in fires_df.iterrows():
-        run_id = fire["runid"]
-        year = fire["year"]
-        burn_id = fire["burnid"]
-        target_area = round(fire["area"])
-        region = fire["region"]
-        region_id = config["region_lookup"][region]
+    # note how many fires are burning for logfile
+    n_fires = len(fires_df)
 
-        log.info("Processing - runid:{} year:{} regionid:{} burnid:{} target_area:{}".format(run_id, year, region_id, burn_id, target_area))
+    # loop through all fires in list
+    for i, fire in enumerate(fires_df.itertuples(index=False)):
+        run_id = fire.runid
+        year = fire.year
+        burn_id = fire.burnid
+        target_area = round(fire.area)
+        region_id = config["region_lookup"][fire.region]
+        count = i + 1
+        log.info("Processing - runid:{} year:{} regionid:{} burnid:{} target_area:{} n:{}-{}".format(run_id, year, region_id, burn_id, target_area, count, n_fires))
 
         # because we are looping through the fires, applying them individually
         # it is necessary to make sure the fire's ignition location has not
         # already burned *this year*
-
         while flattened[forest_idx[idx_position]] == 0:
             idx_position += 1
             if idx_position > len(forest_idx):
@@ -217,7 +218,7 @@ def apply_fires(fires_df, forest_reg, forest_image, burn_image, n=None):
                 "burn_id": burn_id,
                 "year": year,
                 "runid": run_id,
-                "region": region,
+                "region": fire.region,
                 "target_area": target_area,
                 "iteration": result["iteration"],
                 "burned_forest_area": result["burned_forest_area"],

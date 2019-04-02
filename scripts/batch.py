@@ -7,7 +7,11 @@
 # Or, process high scenario for specific draws:
 # $ python batch.py high "1 2 5 10 12 13"
 
+# Batch processing for test run was done on 32core 128G Ubuntu 18.04.2
+# On this system, a max of 10/11 concurrent processes is possible. At about
+# 10G per process the system runs out of memory quickly
 
+# runs
 import subprocess
 from multiprocessing import Pool
 import click
