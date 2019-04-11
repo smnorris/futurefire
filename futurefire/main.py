@@ -68,11 +68,15 @@ def random_index(forest):
 
     # shuffle the index and return
     np.random.shuffle(idx)
-    return idx
+
+    if len(idx) > 0:
+        return idx
+    else:
+        raise ValueError("No unburned forest")
 
 
 def apply_fires(fires_df, forest_reg, forest_image, burn_image, n=None):
-    """burn list of fires inot provided images
+    """burn list of fires into provided images
     """
     # if specified, only process n records
     if n:
@@ -171,8 +175,14 @@ def apply_fires(fires_df, forest_reg, forest_image, burn_image, n=None):
             # after 1000 expansions, give up and restart burn in another spot
             elif len(ellipse_list) >= 1000:
                 log.info("More than 1000 expansions - runid:{} year:{} regionid:{} burnid:{} target_area:{}".format(run_id, year, region_id, burn_id, target_area))
+
                 # get new ignition point
                 idx_position += 1
+                while flattened[forest_idx[idx_position]] == 0:
+                    idx_position += 1
+                    if idx_position > len(forest_idx):
+                        raise RuntimeError("No unburned area found")
+
                 ignition_r, ignition_c = np.unravel_index(
                     forest_idx[idx_position], burn_image.shape
                 )
